@@ -77,28 +77,42 @@ function App() {
   const filteredCutoffs = useMemo(() => {
     if (!allCutoffs || allCutoffs.length === 0) return [];
 
+    console.log("Filters:", filters);
+    console.log("Sample record:", allCutoffs[0]);
+
     const fYear = filters.year?.trim();
     const fRound = filters.round?.trim();
-    const fInstitute = filters.institute?.trim().toLowerCase();
-    const fProgram = filters.program?.trim().toLowerCase();
-    const fCategory = filters.category?.trim();
-    const fQuota = filters.quota?.trim();
-    const fGender = filters.gender?.trim();
+    const fInstitute = (filters.institute || "").trim().toLowerCase();
+    const fProgram = (filters.program || "").trim().toLowerCase();
+    const fCategory = (filters.category || "").trim();
+    const fQuota = (filters.quota || "").trim();
+    const fGender = (filters.gender || "").trim();
 
-    let result = allCutoffs.filter(row => {
+    let result = allCutoffs.filter(item => {
+      // Normalize dataset fields
+      const itemYear = String(item.year || "").trim();
+      const itemRound = String(item.round || "").trim();
+      const itemInstitute = String(item.institute || "").trim().toLowerCase();
+      const itemProgram = String(item.program || "").trim().toLowerCase();
+      const itemCategory = String(item.category || "").trim();
+      const itemQuota = String(item.quota || "").trim();
+      const itemGender = String(item.gender || item.seat_gender || "").trim();
+
       // Exact Matches
-      if (fYear && String(row.year) !== fYear) return false;
-      if (fRound && fRound !== "All Rounds" && String(row.round) !== fRound) return false;
-      if (fCategory && row.category !== fCategory) return false;
-      if (fQuota && row.quota !== fQuota) return false;
-      if (fGender && row.gender !== fGender) return false;
+      if (fYear && itemYear !== fYear) return false;
+      if (fRound && fRound !== "All Rounds" && itemRound !== fRound) return false;
+      if (fCategory && itemCategory !== fCategory) return false;
+      if (fQuota && itemQuota !== fQuota) return false;
+      if (fGender && itemGender !== fGender) return false;
 
-      // Partial Matches (toLowerCase includes)
-      if (fInstitute && !(row.institute || "").toLowerCase().includes(fInstitute)) return false;
-      if (fProgram && !(row.program || "").toLowerCase().includes(fProgram)) return false;
+      // Partial Matches (substring matching)
+      if (fInstitute && !itemInstitute.includes(fInstitute)) return false;
+      if (fProgram && !itemProgram.includes(fProgram)) return false;
 
       return true;
     });
+
+    console.log("Filtered results:", result.length);
 
     // 3. Sort by closing_rank ascending
     result.sort((a, b) => {
