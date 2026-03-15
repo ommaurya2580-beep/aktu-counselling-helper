@@ -21,7 +21,7 @@ const CutoffList = ({ cutoffs, filters }) => {
     const filteredData = useMemo(() => {
         let data = cutoffs;
 
-        // External filters are now strictly handled by Firestore, so we only apply local search term
+        // External filters are now strictly handled by the parent component, so we only apply local search term
         if (!searchTerm) return data;
         
         const lowerSearch = searchTerm.toLowerCase();
