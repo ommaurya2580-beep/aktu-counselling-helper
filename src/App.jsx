@@ -9,6 +9,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('search'); // 'search', 'analytics', 'predictor', 'colleges'
   const [allCutoffs, setAllCutoffs] = useState([]); // Stores all 10k records from JSON
   const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState(null);
   const [warning, setWarning] = useState(null);
   
@@ -18,32 +19,37 @@ function App() {
   const [uniqueQuotas, setUniqueQuotas] = useState(filterData.quotas || []);
   const [uniqueGenders, setUniqueGenders] = useState(filterData.genders || []);
 
-  // Filter States
-  const [filters, setFilters] = useState({
-    year: '2024',
+  const initialFilters = {
+    year: '',
     round: '',
     institute: '',
     program: '',
     category: '',
     quota: '',
     gender: ''
-  });
+  };
+
+  // Filter States
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
 
   const handleFilterChange = React.useCallback((e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   }, []);
 
+  const handleSearch = React.useCallback(() => {
+    setIsSearching(true);
+    // Simulate short network delay for better UX
+    setTimeout(() => {
+      setAppliedFilters(filters);
+      setIsSearching(false);
+    }, 400);
+  }, [filters]);
+
   const handleResetFilters = React.useCallback(() => {
-    setFilters({
-      year: '2024',
-      round: '',
-      institute: '',
-      program: '',
-      category: '',
-      quota: '',
-      gender: ''
-    });
+    setFilters(initialFilters);
+    setAppliedFilters(initialFilters);
     setWarning(null);
     setError(null);
   }, []);
@@ -77,16 +83,16 @@ function App() {
   const filteredCutoffs = useMemo(() => {
     if (!allCutoffs || allCutoffs.length === 0) return [];
 
-    console.log("Filters:", filters);
+    console.log("Filters:", appliedFilters);
     console.log("Sample record:", allCutoffs[0]);
 
-    const fYear = filters.year?.trim();
-    const fRound = filters.round?.trim();
-    const fInstitute = (filters.institute || "").trim().toLowerCase();
-    const fProgram = (filters.program || "").trim().toLowerCase();
-    const fCategory = (filters.category || "").trim();
-    const fQuota = (filters.quota || "").trim();
-    const fGender = (filters.gender || "").trim();
+    const fYear = appliedFilters.year?.trim();
+    const fRound = appliedFilters.round?.trim();
+    const fInstitute = (appliedFilters.institute || "").trim().toLowerCase();
+    const fProgram = (appliedFilters.program || "").trim().toLowerCase();
+    const fCategory = (appliedFilters.category || "").trim();
+    const fQuota = (appliedFilters.quota || "").trim();
+    const fGender = (appliedFilters.gender || "").trim();
 
     let result = allCutoffs.filter(item => {
       // Normalize dataset fields
@@ -122,16 +128,19 @@ function App() {
     });
 
     return result;
-  }, [allCutoffs, filters]);
+  }, [allCutoffs, appliedFilters]);
 
   // Warning for empty search results
   useEffect(() => {
-    if (!loading && filteredCutoffs.length === 0 && allCutoffs.length > 0) {
+    const hasApplied = Object.values(appliedFilters).some(v => v.trim() !== '');
+    if (!loading && !isSearching && hasApplied && filteredCutoffs.length === 0 && allCutoffs.length > 0) {
       setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
     } else {
       setWarning(null);
     }
-  }, [filteredCutoffs, loading, allCutoffs.length]);
+  }, [filteredCutoffs, loading, isSearching, appliedFilters, allCutoffs.length]);
+
+  const hasFilters = Object.values(filters).some(val => val.trim() !== '');
 
   return (
     <>
@@ -175,6 +184,7 @@ function App() {
             <div className="filter-group">
               <label>Counselling Year</label>
               <select name="year" value={filters.year} onChange={handleFilterChange}>
+                <option value="">All Years</option>
                 <option value="2025">2025</option>
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
@@ -270,11 +280,25 @@ function App() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button className="reset-btn" onClick={handleResetFilters} disabled={loading} style={{ flex: 1, backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', color: '#60a5fa' }}>
+            <button 
+              className="search-btn" 
+              onClick={handleSearch} 
+              disabled={loading || !hasFilters || isSearching} 
+              style={{ flex: 1, backgroundColor: '#3b82f6', color: 'white', border: 'none', fontWeight: 'bold', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', opacity: (!hasFilters || isSearching) ? 0.6 : 1 }}
+            >
+              {isSearching ? 'Searching...' : 'Search Cutoffs'}
+            </button>
+            <button className="reset-btn" onClick={handleResetFilters} disabled={loading || isSearching} style={{ flex: 1, backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', color: '#60a5fa', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
               Reset Filters
             </button>
           </div>
         </section>
+
+        {!hasFilters && !Object.values(appliedFilters).some(v => v.trim() !== '') && activeTab === 'search' && !loading && (
+          <div className="glass-container info-alert" style={{ margin: '2rem 0', borderColor: 'rgba(59, 130, 246, 0.5)', background: 'rgba(59, 130, 246, 0.1)', textAlign: 'center' }}>
+            <p style={{ color: '#60a5fa', fontWeight: '500', fontSize: '1.2rem' }}>Select filters and click Search to view cutoffs.</p>
+          </div>
+        )}
 
         {error && (
           <div className="glass-container error-alert" style={{ margin: '2rem 0', borderColor: 'rgba(239, 68, 68, 0.5)', background: 'rgba(239, 68, 68, 0.1)' }}>
@@ -293,10 +317,14 @@ function App() {
           <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Loading cutoff data...</p>
           </div>
-        ) : activeTab === 'search' ? (
+        ) : activeTab === 'search' && isSearching ? (
+          <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Searching cutoffs...</p>
+          </div>
+        ) : activeTab === 'search' && Object.values(appliedFilters).some(v => v.trim() !== '') ? (
           <CutoffList 
              cutoffs={filteredCutoffs} 
-             filters={filters} 
+             filters={appliedFilters} 
           />
         ) : null}
           </>
