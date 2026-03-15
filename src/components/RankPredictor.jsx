@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 
-const RankPredictor = ({ db, uniqueCategories, uniqueQuotas, uniquePrograms }) => {
+const RankPredictor = ({ allCutoffs, uniqueCategories, uniqueQuotas, uniquePrograms }) => {
   const [filters, setFilters] = useState({
     rank: '',
     category: '',
@@ -22,7 +21,7 @@ const RankPredictor = ({ db, uniqueCategories, uniqueQuotas, uniquePrograms }) =
 
   const currentRank = parseInt(filters.rank);
 
-  const fetchPredictions = async () => {
+  const fetchPredictions = () => {
     if (!filters.rank || isNaN(currentRank) || currentRank <= 0) {
       setError("Please enter a valid numeric rank.");
       return;
@@ -41,22 +40,14 @@ const RankPredictor = ({ db, uniqueCategories, uniqueQuotas, uniquePrograms }) =
     setPredictions([]);
 
     try {
-      // Fetch baseline data securely from Firestore (avoids index errors by limiting scope)
-      const q = query(
-        collection(db, 'cutoffs'),
-        where('year', '==', parseInt(filters.year) || filters.year),
-        where('round', '==', parseInt(filters.round) || filters.round)
-      );
-      
-      const snapshot = await getDocs(q);
-      const allRows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Local filtering
-      const filtered = allRows.filter(row => {
+      // Local filtering from static JSON
+      const filtered = allCutoffs.filter(row => {
         const rCat = (row.category || "").trim();
         const rQuota = (row.quota || "").trim();
         const rProg = (row.program || "").trim().toLowerCase();
 
+        if (String(row.year) !== String(filters.year)) return false;
+        if (String(row.round) !== String(filters.round)) return false;
         if (rCat !== filters.category) return false;
         if (rQuota !== filters.quota) return false;
         if (filters.program && rProg !== filters.program.toLowerCase()) return false;

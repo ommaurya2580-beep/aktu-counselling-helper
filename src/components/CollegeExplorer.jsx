@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 
-const CollegeExplorer = ({ db, uniqueInstitutes }) => {
+const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
   const [selectedInstitute, setSelectedInstitute] = useState('');
   const [collegeData, setCollegeData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -11,7 +10,7 @@ const CollegeExplorer = ({ db, uniqueInstitutes }) => {
   const baselineYear = 2024;
   const baselineRound = 1;
 
-  const fetchCollegeDetails = async (institute) => {
+  const fetchCollegeDetails = (institute) => {
     if (!institute) {
       setCollegeData([]);
       return;
@@ -21,19 +20,14 @@ const CollegeExplorer = ({ db, uniqueInstitutes }) => {
     setCollegeData([]);
 
     try {
-      const q = query(
-        collection(db, 'cutoffs'),
-        where('year', '==', baselineYear),
-        where('round', '==', baselineRound)
-      );
-
-      const snapshot = await getDocs(q);
-      const allRows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Filter locally to avoid index rules limitations
-      const filtered = allRows.filter(row => {
+      // Filter locally from the loaded JSON data
+      const filtered = allCutoffs.filter(row => {
         const rInst = (row.institute || "").trim().toLowerCase();
-        return rInst === institute.trim().toLowerCase();
+        return (
+            rInst === institute.trim().toLowerCase() &&
+            String(row.year) === String(baselineYear) &&
+            String(row.round) === String(baselineRound)
+        );
       });
 
       // Sort by program name then category

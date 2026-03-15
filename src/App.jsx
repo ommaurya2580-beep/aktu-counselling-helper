@@ -1,28 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from './firebase';
+import React, { useEffect, useState, useMemo } from 'react';
 import CutoffList from './components/CutoffList';
 import CutoffAnalytics from './components/CutoffAnalytics';
 import RankPredictor from './components/RankPredictor';
 import CollegeExplorer from './components/CollegeExplorer';
 import filterData from './data/filterOptions.json';
+
 function App() {
   const [activeTab, setActiveTab] = useState('search'); // 'search', 'analytics', 'predictor', 'colleges'
-  const [cutoffs, setCutoffs] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [allCutoffs, setAllCutoffs] = useState([]); // Stores all 10k records from JSON
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [warning, setWarning] = useState(null);
+  
   const [uniqueInstitutes, setUniqueInstitutes] = useState(filterData.institutes || []);
   const [uniquePrograms, setUniquePrograms] = useState(filterData.programs || []);
   const [uniqueCategories, setUniqueCategories] = useState(filterData.categories || []);
   const [uniqueQuotas, setUniqueQuotas] = useState(filterData.quotas || []);
   const [uniqueGenders, setUniqueGenders] = useState(filterData.genders || []);
-  const [filtersLoading, setFiltersLoading] = useState(false);
-  const [schemaTypes, setSchemaTypes] = useState({ year: 'number', round: 'number' }); // We know from DB schema that these are numbers
 
   // Filter States
   const [filters, setFilters] = useState({
-    year: '2024', // Default latest year we have data for
+    year: '2024',
     round: '',
     institute: '',
     program: '',
@@ -46,131 +44,80 @@ function App() {
       quota: '',
       gender: ''
     });
-    setCutoffs([]);
     setWarning(null);
     setError(null);
   };
 
-  const fetchFilterOptions = async () => {
-    // No longer needed! Static JSON is loaded instantly.
-    // This saves 50,000+ document reads per day and prevents Firebase Quota Exceeded errors.
-    setFiltersLoading(false);
-  };
-
-  const fetchCutoffs = async () => {
-    setLoading(true);
-    setError(null);
-    setWarning(null);
-    try {
-      let q = collection(db, 'cutoffs');
-
-      // 1) Normalize strings
-      const fYear = filters.year?.trim() || "";
-      const fRound = filters.round?.trim() || "";
-      const fInstitute = filters.institute?.trim() || "";
-      const fProgram = filters.program?.trim() || "";
-      const fCategory = filters.category?.trim() || "";
-      const fQuota = filters.quota?.trim() || "";
-      const fGender = filters.gender?.trim() || "";
-
-      // 2) Log Filter Values
-      console.log("Search Filters:", {
-        year: fYear,
-        round: fRound,
-        institute: fInstitute,
-        program: fProgram,
-        category: fCategory,
-        quota: fQuota,
-        gender: fGender
-      });
-      console.log("Selected Institute:", fInstitute);
-
-      // 3) Build Minimal Firestore Query
-      const conditions = [];
-
-      if (fYear) {
-        conditions.push(where('year', '==', schemaTypes.year === 'number' ? parseInt(fYear) : fYear));
-      }
-      if (fRound && fRound !== "All Rounds") {
-        conditions.push(where('round', '==', schemaTypes.round === 'number' ? parseInt(fRound) : fRound));
-      }
-
-      if (conditions.length > 0) {
-        q = query(q, ...conditions);
-      }
-
-      // 4) Fetch Data
-      const querySnapshot = await getDocs(q);
-      console.log("Documents from Firestore:", querySnapshot.size);
-
-      // 5) Normalize, Apply Frontend Filters and Partial Matching
-      let filteredResults = querySnapshot.docs
-        .map(doc => {
-          const row = doc.data();
-          // Normalize string fields
-          return {
-            id: doc.id,
-            ...row,
-            program: typeof row.program === 'string' ? row.program.trim() : (row.program || ""),
-            institute: typeof row.institute === 'string' ? row.institute.trim() : (row.institute || ""),
-            category: typeof row.category === 'string' ? row.category.trim() : (row.category || ""),
-            quota: typeof row.quota === 'string' ? row.quota.trim() : (row.quota || ""),
-            gender: typeof row.gender === 'string' ? row.gender.trim() : (row.gender || "")
-          };
-        })
-        .filter(row =>
-          (!fProgram || row.program.toLowerCase().includes(fProgram.toLowerCase())) &&
-          (!fCategory || row.category === fCategory) &&
-          (!fQuota || row.quota === fQuota) &&
-          (!fGender || row.gender === fGender) &&
-          (!fInstitute || row.institute.toLowerCase().includes(fInstitute.toLowerCase()))
-        );
-
-      console.log("Documents after filtering:", filteredResults.length);
-
-      // 6) Sort Results by Closing Rank
-      filteredResults.sort((a, b) => {
-        const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-        const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-        return rankA - rankB;
-      });
-
-      setCutoffs(filteredResults);
-
-      // 7) Handle Empty Results
-      if (filteredResults.length === 0) {
-        setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
-      }
-
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      if (err.message.includes('requires an index')) {
-        setError("This complex query requires a Firestore index. Please check your console for the direct link to create it, or deploy Indexes via Firebase CLI.");
-      } else {
-        setError("Failed to fetch cutoff data. Check connection and try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initial load
+  // 1. Fetch JSON Data exactly ONCE on mount
   useEffect(() => {
-    fetchFilterOptions();
-    fetchCutoffs();
-
-    // Test Firestore Connectivity
-    const testConnection = async () => {
+    let isMounted = true;
+    const loadStaticData = async () => {
       try {
-        const snapshot = await getDocs(collection(db, "cutoffs"));
-        console.log("Total documents in cutoffs collection:", snapshot.size);
+        setLoading(true);
+        const response = await fetch('/cutoffs.json');
+        if (!response.ok) throw new Error('Failed to load dataset');
+        const data = await response.json();
+        if (isMounted) {
+          setAllCutoffs(data);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error("Test Query Error:", err);
+        console.error("Error loading static dataset:", err);
+        if (isMounted) {
+          setError("Failed to load counselling data. Please refresh.");
+          setLoading(false);
+        }
       }
     };
-    testConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadStaticData();
+    return () => { isMounted = false; };
+  }, []); // Empty dependency array ensures it runs only ONCE
+
+  // 2. Client-Side Search & Filtering using useMemo
+  const filteredCutoffs = useMemo(() => {
+    if (!allCutoffs || allCutoffs.length === 0) return [];
+
+    const fYear = filters.year?.trim();
+    const fRound = filters.round?.trim();
+    const fInstitute = filters.institute?.trim().toLowerCase();
+    const fProgram = filters.program?.trim().toLowerCase();
+    const fCategory = filters.category?.trim();
+    const fQuota = filters.quota?.trim();
+    const fGender = filters.gender?.trim();
+
+    let result = allCutoffs.filter(row => {
+      // Exact Matches
+      if (fYear && String(row.year) !== fYear) return false;
+      if (fRound && fRound !== "All Rounds" && String(row.round) !== fRound) return false;
+      if (fCategory && row.category !== fCategory) return false;
+      if (fQuota && row.quota !== fQuota) return false;
+      if (fGender && row.gender !== fGender) return false;
+
+      // Partial Matches (toLowerCase includes)
+      if (fInstitute && !(row.institute || "").toLowerCase().includes(fInstitute)) return false;
+      if (fProgram && !(row.program || "").toLowerCase().includes(fProgram)) return false;
+
+      return true;
+    });
+
+    // 3. Sort by closing_rank ascending
+    result.sort((a, b) => {
+      const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+      const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+      return rankA - rankB;
+    });
+
+    return result;
+  }, [allCutoffs, filters]);
+
+  // Warning for empty search results
+  useEffect(() => {
+    if (!loading && filteredCutoffs.length === 0 && allCutoffs.length > 0) {
+      setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
+    } else {
+      setWarning(null);
+    }
+  }, [filteredCutoffs, loading, allCutoffs.length]);
 
   return (
     <>
@@ -305,10 +252,7 @@ function App() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button className="search-btn" onClick={fetchCutoffs} disabled={loading} style={{ flex: 2 }}>
-              {loading ? 'Searching...' : 'Search Cutoffs'}
-            </button>
-            <button className="reset-btn" onClick={handleResetFilters} disabled={loading} style={{ flex: 1 }}>
+            <button className="reset-btn" onClick={handleResetFilters} disabled={loading} style={{ flex: 1, backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', color: '#60a5fa' }}>
               Reset Filters
             </button>
           </div>
@@ -333,7 +277,7 @@ function App() {
           </div>
         ) : activeTab === 'search' ? (
           <CutoffList 
-             cutoffs={cutoffs} 
+             cutoffs={filteredCutoffs} 
              filters={filters} 
           />
         ) : null}
@@ -342,7 +286,7 @@ function App() {
 
         {activeTab === 'analytics' && (
           <CutoffAnalytics 
-            db={db} 
+            allCutoffs={allCutoffs} 
             uniqueInstitutes={uniqueInstitutes} 
             uniquePrograms={uniquePrograms} 
             uniqueCategories={uniqueCategories} 
@@ -351,7 +295,7 @@ function App() {
 
         {activeTab === 'predictor' && (
           <RankPredictor
-            db={db}
+            allCutoffs={allCutoffs}
             uniqueCategories={uniqueCategories}
             uniqueQuotas={uniqueQuotas}
             uniquePrograms={uniquePrograms}
@@ -360,7 +304,7 @@ function App() {
 
         {activeTab === 'colleges' && (
           <CollegeExplorer
-            db={db}
+            allCutoffs={allCutoffs}
             uniqueInstitutes={uniqueInstitutes}
           />
         )}

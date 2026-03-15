@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import React, { useState, useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,7 +21,7 @@ ChartJS.register(
   Legend
 );
 
-const CutoffAnalytics = ({ db, uniqueInstitutes, uniquePrograms, uniqueCategories }) => {
+const CutoffAnalytics = ({ allCutoffs, uniqueInstitutes, uniquePrograms, uniqueCategories }) => {
   const [filters, setFilters] = useState({
     institute: '',
     program: '',
@@ -41,7 +40,7 @@ const CutoffAnalytics = ({ db, uniqueInstitutes, uniquePrograms, uniqueCategorie
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = () => {
     if (!filters.institute || !filters.program || !filters.category) {
       setError("Please select an Institute, Program, and Category to view trends.");
       return;
@@ -51,23 +50,15 @@ const CutoffAnalytics = ({ db, uniqueInstitutes, uniquePrograms, uniqueCategorie
     setChartData([]);
 
     try {
-      // Fetch across multiple years for the selected round to avoid complex index requirements
-      const years = [2021, 2022, 2023, 2024, 2025];
-      const promises = years.map(async (yr) => {
-        const q = query(
-          collection(db, 'cutoffs'),
-          where('year', '==', yr),
-          where('round', '==', parseInt(filters.round))
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      });
-
-      const results = await Promise.all(promises);
-      const allCutoffs = results.flat();
+      // Filter for the selected round and multiple years from the full JSON dataset
+      const years = ["2021", "2022", "2023", "2024", "2025"];
+      const roundMatches = allCutoffs.filter(row => 
+          String(row.round) === String(filters.round) && 
+          years.includes(String(row.year))
+      );
 
       // Normalize and filter locally for program 1
-      const p1Cutoffs = allCutoffs.filter(row => {
+      const p1Cutoffs = roundMatches.filter(row => {
         const rInst = (row.institute || "").trim().toLowerCase();
         const rProg = (row.program || "").trim().toLowerCase();
         const rCat = (row.category || "").trim();
@@ -77,7 +68,7 @@ const CutoffAnalytics = ({ db, uniqueInstitutes, uniquePrograms, uniqueCategorie
       });
 
       // Normalize and filter locally for program 2
-      const p2Cutoffs = filters.compareProgram ? allCutoffs.filter(row => {
+      const p2Cutoffs = filters.compareProgram ? roundMatches.filter(row => {
         const rInst = (row.institute || "").trim().toLowerCase();
         const rProg = (row.program || "").trim().toLowerCase();
         const rCat = (row.category || "").trim();
