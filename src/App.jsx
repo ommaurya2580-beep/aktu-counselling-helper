@@ -54,7 +54,7 @@ function App() {
     const loadStaticData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/cutoffs.json');
+        const response = await fetch('/cutoffs.min.json');
         if (!response.ok) throw new Error('Failed to load dataset');
         const data = await response.json();
         if (isMounted) {
@@ -272,8 +272,8 @@ function App() {
 
         {/* Data Table Section */}
         {activeTab === 'search' && loading ? (
-          <div className="loader-container">
-            <div className="loader"></div>
+          <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Loading cutoff data...</p>
           </div>
         ) : activeTab === 'search' ? (
           <CutoffList 

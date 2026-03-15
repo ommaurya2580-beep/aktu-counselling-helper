@@ -1,121 +1,120 @@
 import React, { useState } from 'react';
 
 const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
-  const [selectedInstitute, setSelectedInstitute] = useState('');
-  const [collegeData, setCollegeData] = useState([]);
+  const [selectedInstitutes, setSelectedInstitutes] = useState(['', '', '']); // Up to 3 colleges
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   
-  // Hardcoded to recent baseline for general college overview
   const baselineYear = 2024;
   const baselineRound = 1;
 
-  const fetchCollegeDetails = (institute) => {
-    if (!institute) {
-      setCollegeData([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setCollegeData([]);
-
-    try {
-      // Filter locally from the loaded JSON data
-      const filtered = allCutoffs.filter(row => {
-        const rInst = (row.institute || "").trim().toLowerCase();
-        return (
-            rInst === institute.trim().toLowerCase() &&
-            String(row.year) === String(baselineYear) &&
-            String(row.round) === String(baselineRound)
-        );
-      });
-
-      // Sort by program name then category
-      filtered.sort((a, b) => {
-        const pDiff = (a.program || "").localeCompare(b.program || "");
-        if (pDiff !== 0) return pDiff;
-        return (a.category || "").localeCompare(b.category || "");
-      });
-
-      if (filtered.length === 0) {
-        setError(`No cutoff historical data found for ${institute} in ${baselineYear} (Round ${baselineRound}).`);
-      } else {
-        setCollegeData(filtered);
-      }
-    } catch (err) {
-      console.error("Error fetching college details:", err);
-      setError("Failed to fetch college details.");
-    } finally {
-      setLoading(false);
-    }
+  const handleInstituteChange = (index, value) => {
+    const newInstitutes = [...selectedInstitutes];
+    newInstitutes[index] = value;
+    setSelectedInstitutes(newInstitutes);
   };
 
-  const handleInstituteChange = (e) => {
-    const val = e.target.value;
-    setSelectedInstitute(val);
-    fetchCollegeDetails(val);
+  const getCollegeData = (instituteName) => {
+    if (!instituteName) return null;
+    const filtered = allCutoffs.filter(row => {
+      const rInst = (row.institute || "").trim().toLowerCase();
+      return (
+          rInst === instituteName.trim().toLowerCase() &&
+          String(row.year) === String(baselineYear) &&
+          String(row.round) === String(baselineRound)
+      );
+    });
+
+    if (filtered.length === 0) return { name: instituteName, branches: 0, range: "N/A", programs: [] };
+
+    let minRank = Infinity;
+    let maxRank = 0;
+    
+    // Sort by program name then category
+    filtered.sort((a, b) => {
+      const pDiff = (a.program || "").localeCompare(b.program || "");
+      if (pDiff !== 0) return pDiff;
+      return (a.category || "").localeCompare(b.category || "");
+    });
+
+    filtered.forEach(row => {
+      const oRank = parseInt((row.opening_rank || "").toString().replace(/,/g, ''));
+      const cRank = parseInt((row.closing_rank || "").toString().replace(/,/g, ''));
+      if (oRank && oRank < minRank) minRank = oRank;
+      if (cRank && cRank > maxRank) maxRank = cRank;
+    });
+
+    return {
+      name: instituteName,
+      branches: new Set(filtered.map(r => r.program)).size,
+      minRank: minRank === Infinity ? '-' : minRank.toLocaleString(),
+      maxRank: maxRank === 0 ? '-' : maxRank.toLocaleString(),
+      programs: filtered
+    };
   };
+
+  const comparisonData = selectedInstitutes.map(inst => getCollegeData(inst));
 
   return (
     <div className="glass-container analytics-container">
-      <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>College Explorer</h2>
+      <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>College Comparison Explorer</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-        Select a college to view its offered programs and their latest round 1 baseline cutoffs (Year {baselineYear}).
+        Select up to 3 colleges to compare their branches offered and rank ranges (Round {baselineRound}, {baselineYear}).
       </p>
 
-      <div className="filter-group" style={{ marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem auto' }}>
-        <label>Select Institute</label>
-        <select value={selectedInstitute} onChange={handleInstituteChange}>
-          <option value="">-- Choose an Institute --</option>
-          {uniqueInstitutes.map((inst, i) => <option key={i} value={inst}>{inst}</option>)}
-        </select>
+      <div className="filter-grid" style={{ marginBottom: '2rem' }}>
+        {[0, 1, 2].map(index => (
+          <div className="filter-group" key={index}>
+            <label>College {index + 1}</label>
+            <select value={selectedInstitutes[index]} onChange={(e) => handleInstituteChange(index, e.target.value)}>
+              <option value="">-- Select or Leave Blank --</option>
+              {uniqueInstitutes.map((inst, i) => <option key={i} value={inst}>{inst}</option>)}
+            </select>
+          </div>
+        ))}
       </div>
 
-      {loading && (
-        <div className="loader-container" style={{ margin: '2rem 0' }}>
-          <div className="loader"></div>
-          <p style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading college data...</p>
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+        {comparisonData.map((data, idx) => {
+          if (!data) return null;
+          return (
+            <div key={idx} className="glass-container" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
+              <h3 style={{ color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+                {data.name}
+              </h3>
+              
+              {data.programs.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No cutoff data found for this period.</p>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ flex: 1, padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>Branches</span>
+                      <strong style={{ fontSize: '1.5rem', color: '#60a5fa' }}>{data.branches}</strong>
+                    </div>
+                    <div style={{ flex: 1, padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>Rank Range</span>
+                      <strong style={{ fontSize: '1rem', color: '#34d399' }}>{data.minRank} - {data.maxRank}</strong>
+                    </div>
+                  </div>
 
-      {error && (
-        <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.5)', color: '#f87171', borderRadius: '8px', marginBottom: '1.5rem' }}>
-          {error}
-        </div>
-      )}
-
-      {collegeData.length > 0 && !loading && (
-        <div>
-          <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
-            {selectedInstitute}
-          </h3>
-          
-          <div className="table-wrapper glass-container" style={{ padding: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Program Name</th>
-                  <th>Category</th>
-                  <th>Quota</th>
-                  <th>Opening Rank</th>
-                  <th>Closing Rank</th>
-                </tr>
-              </thead>
-              <tbody>
-                {collegeData.map((row, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: '500' }}>{row.program}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{row.category}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{row.quota}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{row.opening_rank}</td>
-                    <td style={{ fontWeight: '600' }}>{row.closing_rank}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                  <h4 style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem', textTransform: 'uppercase' }}>Branch Cutoffs</h4>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }} className="custom-scrollbar">
+                    {data.programs.map((prog, pIdx) => (
+                      <div key={pIdx} style={{ padding: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                        <div>
+                          <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: '500' }}>{prog.program}</p>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{prog.category} | {prog.quota}</span>
+                        </div>
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{prog.closing_rank?.toLocaleString()}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

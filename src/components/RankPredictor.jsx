@@ -162,39 +162,33 @@ const RankPredictor = ({ allCutoffs, uniqueCategories, uniqueQuotas, uniqueProgr
       {predictions.length > 0 && (
         <div style={{ marginTop: '2rem' }}>
           <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Prediction Results ({predictions.length} found)</h3>
-          <div className="table-wrapper glass-container" style={{ padding: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Institute Name</th>
-                  <th>Program</th>
-                  <th>Closing Rank ({filters.year})</th>
-                  <th>Admission Chance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predictions.map((row, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: '500' }}>{row.institute}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{row.program}</td>
-                    <td style={{ fontWeight: '600' }}>{row.numericCR.toLocaleString()}</td>
-                    <td>
-                      <span style={{
-                        background: `${row.chanceColor}20`,
-                        color: row.chanceColor,
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontWeight: '600',
-                        fontSize: '0.85rem',
-                        border: `1px solid ${row.chanceColor}40`
-                      }}>
-                        {row.chance}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            {predictions.map((row, i) => (
+              <div key={i} className="glass-container" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${row.chanceColor}` }}>
+                <div>
+                  <h4 style={{ color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontSize: '1.1rem', lineHeight: '1.4' }}>{row.institute}</h4>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>{row.program}</p>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Closing Rank</span>
+                    <strong style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{row.numericCR.toLocaleString()}</strong>
+                  </div>
+                  <span style={{
+                    background: `${row.chanceColor}20`,
+                    color: row.chanceColor,
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    border: `1px solid ${row.chanceColor}40`
+                  }}>
+                    {row.chance}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
