@@ -1,0 +1,289 @@
+Testing specific query...
+Found 299 total results for GL Bajaj.
+{
+  year: 2024,
+  round: 4,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 257707,
+  closing_rank: 270250,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Data Science)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 299763,
+  closing_rank: 386405,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 1,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering (Artificial Intelligence)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 228724,
+  closing_rank: 277436,
+  remark: 'Fresh Only'
+}
+{
+  year: 2024,
+  round: 4,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering (Artificial Intelligence)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 307076,
+  closing_rank: 336658,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 1,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Artificial Intelligence & Machine Learning)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 204437,
+  closing_rank: 255026,
+  remark: 'Fresh Only'
+}
+{
+  year: 2024,
+  round: 1,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Information Technology',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 278430,
+  closing_rank: 338282,
+  remark: 'Fresh Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering (Artificial Intelligence)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 275312,
+  closing_rank: 337874,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 1,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Data Science)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 258174,
+  closing_rank: 313909,
+  remark: 'Fresh Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Information Technology',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 416075,
+  closing_rank: 517089,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 156758,
+  closing_rank: 252090,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science (Hindi)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 761587,
+  closing_rank: 1123983,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 4,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Information Technology',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 518467,
+  closing_rank: 536470,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering (Artificial Intelligence)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 275393,
+  closing_rank: 301571,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Artificial Intelligence & Machine Learning)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 221254,
+  closing_rank: 296116,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Artificial Intelligence & Machine Learning)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 267533,
+  closing_rank: 272991,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 203231,
+  closing_rank: 261920,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 4,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Data Science)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 403327,
+  closing_rank: 415168,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Data Science)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 339700,
+  closing_rank: 401728,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 4,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science And Engineering(Artificial Intelligence & Machine Learning)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 273138,
+  closing_rank: 288471,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 2,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Information Technology',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 335479,
+  closing_rank: 446830,
+  remark: 'Fresh and Upgraded Only'
+}
+{
+  year: 2024,
+  round: 1,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science and Engineering',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 162081,
+  closing_rank: 227672,
+  remark: 'Fresh Only'
+}
+{
+  year: 2024,
+  round: 3,
+  institute: 'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR',
+  program: 'Computer Science (Hindi)',
+  stream: 'B.Tech',
+  quota: 'Home State',
+  category: 'BC',
+  gender: 'Both Male and Female Seats',
+  opening_rank: 859619,
+  closing_rank: 1106454,
+  remark: 'Fresh and Upgraded Only'
+}
+Found 22 matching those specific other filters.

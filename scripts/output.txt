@@ -1,0 +1,6 @@
+Searching for institutes containing 'BAJAJ'...
+Matching Institutes: [
+  'G.L. BAJAJ INSTITUTE OF TECHNOLOGY & MANAGEMENT,GAUTAM BUDDH NAGAR'
+]
+Testing specific query:
+Found 0 results for exact search.
