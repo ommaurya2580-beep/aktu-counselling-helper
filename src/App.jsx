@@ -63,6 +63,7 @@ function App() {
         const response = await fetch('/cutoffs.min.json');
         if (!response.ok) throw new Error('Failed to load dataset');
         const data = await response.json();
+        console.log("Dataset loaded:", data.length);
         if (isMounted) {
           setAllCutoffs(data);
           setLoading(false);
@@ -79,45 +80,45 @@ function App() {
     return () => { isMounted = false; };
   }, []); // Empty dependency array ensures it runs only ONCE
 
-  // 2. Client-Side Search & Filtering using useMemo
   const filteredCutoffs = useMemo(() => {
     if (!allCutoffs || allCutoffs.length === 0) return [];
 
-    console.log("Filters:", appliedFilters);
-    console.log("Sample record:", allCutoffs[0]);
+    function normalize(v) {
+      return String(v || "").trim().toLowerCase();
+    }
 
-    const fYear = appliedFilters.year?.trim();
-    const fRound = appliedFilters.round?.trim();
-    const fInstitute = (appliedFilters.institute || "").trim().toLowerCase();
-    const fProgram = (appliedFilters.program || "").trim().toLowerCase();
-    const fCategory = (appliedFilters.category || "").trim();
-    const fQuota = (appliedFilters.quota || "").trim();
-    const fGender = (appliedFilters.gender || "").trim();
+    const result = allCutoffs.filter(item => {
+      const year = normalize(item.year);
+      const round = normalize(item.round);
+      const institute = normalize(item.institute);
+      const program = normalize(item.program);
+      const quota = normalize(item.quota);
+      const category = normalize(item.category);
+      // Use fallback to seat_gender just in case dataset has mixed keys
+      const gender = normalize(item.gender || item.seat_gender);
 
-    let result = allCutoffs.filter(item => {
-      // Normalize dataset fields
-      const itemYear = String(item.year || "").trim();
-      const itemRound = String(item.round || "").trim();
-      const itemInstitute = String(item.institute || "").trim().toLowerCase();
-      const itemProgram = String(item.program || "").trim().toLowerCase();
-      const itemCategory = String(item.category || "").trim();
-      const itemQuota = String(item.quota || "").trim();
-      const itemGender = String(item.gender || item.seat_gender || "").trim();
+      const fYear = normalize(appliedFilters.year);
+      const fRound = normalize(appliedFilters.round !== "All Rounds" ? appliedFilters.round : "");
+      const fInstitute = normalize(appliedFilters.institute);
+      const fProgram = normalize(appliedFilters.program);
+      const fQuota = normalize(appliedFilters.quota);
+      const fCategory = normalize(appliedFilters.category);
+      const fGender = normalize(appliedFilters.gender);
 
-      // Exact Matches
-      if (fYear && itemYear !== fYear) return false;
-      if (fRound && fRound !== "All Rounds" && itemRound !== fRound) return false;
-      if (fCategory && itemCategory !== fCategory) return false;
-      if (fQuota && itemQuota !== fQuota) return false;
-      if (fGender && itemGender !== fGender) return false;
+      if (fYear && year !== fYear) return false;
+      if (fRound && round !== fRound) return false;
+      if (fQuota && quota !== fQuota) return false;
+      if (fCategory && category !== fCategory) return false;
+      if (fGender && gender !== fGender) return false;
 
-      // Partial Matches (substring matching)
-      if (fInstitute && !itemInstitute.includes(fInstitute)) return false;
-      if (fProgram && !itemProgram.includes(fProgram)) return false;
+      if (fInstitute && !institute.includes(fInstitute)) return false;
+      if (fProgram && !program.includes(fProgram)) return false;
 
       return true;
     });
 
+    console.log("Filters:", appliedFilters);
+    console.log("Dataset sample:", allCutoffs[0]);
     console.log("Filtered results:", result.length);
 
     // 3. Sort by closing_rank ascending
