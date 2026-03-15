@@ -65,17 +65,14 @@ const RankPredictor = ({ allCutoffs, uniqueCategories, uniqueQuotas, uniqueProgr
           if (currentRank <= cr * 0.8) {
             chance = "Very Safe";
             chanceColor = "#10b981"; // emerald
-          } else if (currentRank <= cr * 0.95) {
+          } else if (currentRank <= cr) {
             chance = "Safe";
             chanceColor = "#3b82f6"; // blue
-          } else if (currentRank <= cr * 1.05) {
+          } else if (currentRank <= cr * 1.2) {
             chance = "Moderate";
             chanceColor = "#f59e0b"; // amber
-          } else if (currentRank <= cr * 1.25) {
-            chance = "Risky";
-            chanceColor = "#f97316"; // orange
           } else {
-            chance = "Very Risky";
+            chance = "Risky";
             chanceColor = "#ef4444"; // red
           }
         }
@@ -88,7 +85,7 @@ const RankPredictor = ({ allCutoffs, uniqueCategories, uniqueQuotas, uniqueProgr
       
       // Sort by best chances first, then by institute
       validRows.sort((a, b) => {
-        const chanceOrder = { "Very Safe": 1, "Safe": 2, "Moderate": 3, "Risky": 4, "Very Risky": 5 };
+        const chanceOrder = { "Very Safe": 1, "Safe": 2, "Moderate": 3, "Risky": 4 };
         const orderDiff = chanceOrder[a.chance] - chanceOrder[b.chance];
         if (orderDiff !== 0) return orderDiff;
         return a.institute.localeCompare(b.institute);

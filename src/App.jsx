@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import CutoffList from './components/CutoffList';
-import CutoffAnalytics from './components/CutoffAnalytics';
+import CutoffTrendGraph from './components/CutoffTrendGraph';
 import RankPredictor from './components/RankPredictor';
 import CollegeExplorer from './components/CollegeExplorer';
 import filterData from './data/filterOptions.json';
@@ -29,12 +29,12 @@ function App() {
     gender: ''
   });
 
-  const handleFilterChange = (e) => {
+  const handleFilterChange = React.useCallback((e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = React.useCallback(() => {
     setFilters({
       year: '2024',
       round: '',
@@ -46,7 +46,7 @@ function App() {
     });
     setWarning(null);
     setError(null);
-  };
+  }, []);
 
   // 1. Fetch JSON Data exactly ONCE on mount
   useEffect(() => {
@@ -182,31 +182,35 @@ function App() {
             </div>
             <div className="filter-group">
               <label>Institute Name</label>
-              <select
+              <input
+                list="institute-list"
                 name="institute"
+                placeholder="Type or select institute..."
                 value={filters.institute}
                 onChange={handleFilterChange}
-                disabled={filtersLoading}
-              >
-                <option value="">All Institutes</option>
+                disabled={loading}
+              />
+              <datalist id="institute-list">
                 {uniqueInstitutes.map((inst, index) => (
-                  <option key={index} value={inst}>{inst}</option>
+                  <option key={index} value={inst} />
                 ))}
-              </select>
+              </datalist>
             </div>
             <div className="filter-group">
               <label>Program Name</label>
-              <select
+              <input
+                list="program-list"
                 name="program"
+                placeholder="Type or select program..."
                 value={filters.program}
                 onChange={handleFilterChange}
-                disabled={filtersLoading}
-              >
-                <option value="">All Programs</option>
+                disabled={loading}
+              />
+              <datalist id="program-list">
                 {uniquePrograms.map((prog, index) => (
-                  <option key={index} value={prog}>{prog}</option>
+                  <option key={index} value={prog} />
                 ))}
-              </select>
+              </datalist>
             </div>
             <div className="filter-group">
               <label>Category</label>
@@ -214,7 +218,7 @@ function App() {
                 name="category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                disabled={filtersLoading}
+                disabled={loading}
               >
                 <option value="">All Categories</option>
                 {uniqueCategories.map((cat, index) => (
@@ -228,7 +232,7 @@ function App() {
                 name="quota"
                 value={filters.quota}
                 onChange={handleFilterChange}
-                disabled={filtersLoading}
+                disabled={loading}
               >
                 <option value="">All Quotas</option>
                 {uniqueQuotas.map((quota, index) => (
@@ -242,7 +246,7 @@ function App() {
                 name="gender"
                 value={filters.gender}
                 onChange={handleFilterChange}
-                disabled={filtersLoading}
+                disabled={loading}
               >
                 <option value="">All Genders</option>
                 {uniqueGenders.map((gen, index) => (
@@ -285,7 +289,7 @@ function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <CutoffAnalytics 
+          <CutoffTrendGraph 
             allCutoffs={allCutoffs} 
             uniqueInstitutes={uniqueInstitutes} 
             uniquePrograms={uniquePrograms} 

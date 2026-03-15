@@ -68,7 +68,7 @@ const CutoffList = ({ cutoffs, filters }) => {
 
     const getSortIcon = (key) => {
         if (sortConfig.key !== key) return '↕';
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
+        return sortConfig.direction === 'asc' ? '▲' : '▼';
     };
 
     if (!cutoffs || cutoffs.length === 0) {

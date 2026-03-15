@@ -21,7 +21,7 @@ ChartJS.register(
   Legend
 );
 
-const CutoffAnalytics = ({ allCutoffs, uniqueInstitutes, uniquePrograms, uniqueCategories }) => {
+const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, uniqueCategories }) => {
   const [filters, setFilters] = useState({
     institute: '',
     program: '',
@@ -232,4 +232,4 @@ const CutoffAnalytics = ({ allCutoffs, uniqueInstitutes, uniquePrograms, uniqueC
   );
 };
 
-export default CutoffAnalytics;
+export default CutoffTrendGraph;

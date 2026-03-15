@@ -28,6 +28,8 @@ const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
 
     let minRank = Infinity;
     let maxRank = 0;
+    let sumRank = 0;
+    let countRank = 0;
     
     // Sort by program name then category
     filtered.sort((a, b) => {
@@ -41,6 +43,10 @@ const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
       const cRank = parseInt((row.closing_rank || "").toString().replace(/,/g, ''));
       if (oRank && oRank < minRank) minRank = oRank;
       if (cRank && cRank > maxRank) maxRank = cRank;
+      if (cRank && !isNaN(cRank)) {
+        sumRank += cRank;
+        countRank++;
+      }
     });
 
     return {
@@ -48,6 +54,7 @@ const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
       branches: new Set(filtered.map(r => r.program)).size,
       minRank: minRank === Infinity ? '-' : minRank.toLocaleString(),
       maxRank: maxRank === 0 ? '-' : maxRank.toLocaleString(),
+      avgRank: countRank === 0 ? '-' : Math.floor(sumRank / countRank).toLocaleString(),
       programs: filtered
     };
   };
@@ -86,14 +93,18 @@ const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
                 <p style={{ color: 'var(--text-secondary)' }}>No cutoff data found for this period.</p>
               ) : (
                 <>
-                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ flex: 1, padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>Branches</span>
-                      <strong style={{ fontSize: '1.5rem', color: '#60a5fa' }}>{data.branches}</strong>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 auto', minWidth: '100px', padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Branches</span>
+                      <strong style={{ fontSize: '1.25rem', color: '#60a5fa' }}>{data.branches}</strong>
                     </div>
-                    <div style={{ flex: 1, padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                      <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>Rank Range</span>
+                    <div style={{ flex: '2 1 auto', minWidth: '160px', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Rank Range</span>
                       <strong style={{ fontSize: '1rem', color: '#34d399' }}>{data.minRank} - {data.maxRank}</strong>
+                    </div>
+                    <div style={{ flex: '1 1 auto', minWidth: '100px', padding: '1rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Avg Run Rate</span>
+                      <strong style={{ fontSize: '1rem', color: '#fbbf24' }}>{data.avgRank}</strong>
                     </div>
                   </div>
 

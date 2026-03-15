@@ -256,6 +256,10 @@ tbody tr {
   transition: all 0.2s ease;
 }
 
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
 tbody tr:hover {
   background: rgba(255, 255, 255, 0.04);
 }
