@@ -2,16 +2,17 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC0Hce1w_Ov5r3DlPjxDGjBEM8n3auUqd0",
-  authDomain: "aktu-counselling-data.firebaseapp.com",
-  projectId: "aktu-counselling-data",
-  storageBucket: "aktu-counselling-data.firebasestorage.app",
-  messagingSenderId: "65649831543",
-  appId: "1:65649831543:web:3b453d92bc8bff2ee82072",
-  measurementId: "G-Q5P1HXBLQB"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+console.log("Firebase Project ID:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
 
 export { db };

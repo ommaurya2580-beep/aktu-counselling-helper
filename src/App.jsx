@@ -158,6 +158,17 @@ function App() {
   useEffect(() => {
     fetchFilterOptions();
     fetchCutoffs();
+
+    // Test Firestore Connectivity
+    const testConnection = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "cutoffs"));
+        console.log("Total documents in cutoffs collection:", snapshot.size);
+      } catch (err) {
+        console.error("Test Query Error:", err);
+      }
+    };
+    testConnection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
