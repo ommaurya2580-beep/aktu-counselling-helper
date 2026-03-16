@@ -4,6 +4,17 @@ import CutoffTrendGraph from './components/CutoffTrendGraph';
 import RankPredictor from './components/RankPredictor';
 import CollegeExplorer from './components/CollegeExplorer';
 import filterData from './data/filterOptions.json';
+import Select from 'react-select';
+
+const initialFilters = {
+  year: 'all',
+  round: 'all',
+  institute: 'all',
+  program: 'all',
+  category: 'all',
+  quota: 'all',
+  gender: 'all'
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState('search'); // 'search', 'analytics', 'predictor', 'colleges'
@@ -13,25 +24,14 @@ function App() {
   const [error, setError] = useState(null);
   const [warning, setWarning] = useState(null);
   
-  const [uniqueInstitutes, setUniqueInstitutes] = useState(filterData.institutes || []);
-  const [uniquePrograms, setUniquePrograms] = useState(filterData.programs || []);
-  const [uniqueCategories, setUniqueCategories] = useState(filterData.categories || []);
-  const [uniqueQuotas, setUniqueQuotas] = useState(filterData.quotas || []);
-  const [uniqueGenders, setUniqueGenders] = useState(filterData.genders || []);
-
-  const initialFilters = {
-    year: '',
-    round: '',
-    institute: '',
-    program: '',
-    category: '',
-    quota: '',
-    gender: ''
-  };
+  const [uniqueInstitutes] = useState(filterData.institutes || []);
+  const [uniquePrograms] = useState(filterData.programs || []);
+  const [uniqueCategories] = useState(filterData.categories || []);
+  const [uniqueQuotas] = useState(filterData.quotas || []);
+  const [uniqueGenders] = useState(filterData.genders || []);
 
   // Filter States
   const [filters, setFilters] = useState(initialFilters);
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
 
   const handleFilterChange = React.useCallback((e) => {
     const { name, value } = e.target;
@@ -42,14 +42,12 @@ function App() {
     setIsSearching(true);
     // Simulate short network delay for better UX
     setTimeout(() => {
-      setAppliedFilters(filters);
       setIsSearching(false);
     }, 400);
-  }, [filters]);
+  }, []);
 
   const handleResetFilters = React.useCallback(() => {
     setFilters(initialFilters);
-    setAppliedFilters(initialFilters);
     setWarning(null);
     setError(null);
   }, []);
@@ -97,27 +95,27 @@ function App() {
       // Use fallback to seat_gender just in case dataset has mixed keys
       const gender = normalize(item.gender || item.seat_gender);
 
-      const fYear = normalize(appliedFilters.year);
-      const fRound = normalize(appliedFilters.round !== "All Rounds" ? appliedFilters.round : "");
-      const fInstitute = normalize(appliedFilters.institute);
-      const fProgram = normalize(appliedFilters.program);
-      const fQuota = normalize(appliedFilters.quota);
-      const fCategory = normalize(appliedFilters.category);
-      const fGender = normalize(appliedFilters.gender);
+      const fYear = normalize(filters.year);
+      const fRound = normalize(filters.round !== "All Rounds" ? filters.round : "");
+      const fInstitute = normalize(filters.institute);
+      const fProgram = normalize(filters.program);
+      const fQuota = normalize(filters.quota);
+      const fCategory = normalize(filters.category);
+      const fGender = normalize(filters.gender);
 
-      if (fYear && year !== fYear) return false;
-      if (fRound && round !== fRound) return false;
-      if (fQuota && quota !== fQuota) return false;
-      if (fCategory && category !== fCategory) return false;
-      if (fGender && gender !== fGender) return false;
+      if (fYear && fYear !== "all" && year !== fYear) return false;
+      if (fRound && fRound !== "all" && round !== fRound) return false;
+      if (fQuota && fQuota !== "all" && quota !== fQuota) return false;
+      if (fCategory && fCategory !== "all" && category !== fCategory) return false;
+      if (fGender && fGender !== "all" && gender !== fGender) return false;
 
-      if (fInstitute && !institute.includes(fInstitute)) return false;
-      if (fProgram && !program.includes(fProgram)) return false;
+      if (fInstitute && fInstitute !== "all" && !institute.includes(fInstitute)) return false;
+      if (fProgram && fProgram !== "all" && !program.includes(fProgram)) return false;
 
       return true;
     });
 
-    console.log("Filters:", appliedFilters);
+    console.log("Filters:", filters);
     console.log("Dataset sample:", allCutoffs[0]);
     console.log("Filtered results:", result.length);
 
@@ -129,19 +127,74 @@ function App() {
     });
 
     return result;
-  }, [allCutoffs, appliedFilters]);
+  }, [allCutoffs, filters]);
+
+  const roundOptions = useMemo(() => {
+    if (!allCutoffs || allCutoffs.length === 0) return [];
+    
+    let relevantCutoffs = allCutoffs;
+    if (filters.year && filters.year !== 'all') {
+      relevantCutoffs = allCutoffs.filter(item => String(item.year) === String(filters.year));
+    }
+
+    const rounds = [...new Set(relevantCutoffs.map(item => item.round))].filter(Boolean);
+    const sortedRounds = rounds
+      .map(r => parseInt(r))
+      .filter(r => !isNaN(r))
+      .sort((a, b) => a - b);
+    return sortedRounds.map(r => String(r));
+  }, [allCutoffs, filters.year]);
+
+  const instituteOptions = useMemo(() => {
+    return [
+      { label: "All Institutes", value: "all" },
+      ...uniqueInstitutes.map(inst => ({ label: inst, value: inst }))
+    ];
+  }, [uniqueInstitutes]);
+
+  const programOptions = useMemo(() => {
+    return [
+      { label: "All Programs", value: "all" },
+      ...uniquePrograms.map(prog => ({ label: prog, value: prog }))
+    ];
+  }, [uniquePrograms]);
+
+  const customStyles = {
+    control: (base) => ({
+      ...base,
+      backgroundColor: "#0f172a",
+      color: "white",
+      borderRadius: "10px",
+      minHeight: "42px",
+      border: "1px solid rgba(255, 255, 255, 0.1)"
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: "white"
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: "#1e293b",
+      color: "white",
+      zIndex: 5
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? "#3b82f6" : "#1e293b",
+      color: "white",
+      cursor: "pointer"
+    })
+  };
 
   // Warning for empty search results
   useEffect(() => {
-    const hasApplied = Object.values(appliedFilters).some(v => v.trim() !== '');
+    const hasApplied = Object.values(filters).some(v => v !== 'all' && v.trim() !== '');
     if (!loading && !isSearching && hasApplied && filteredCutoffs.length === 0 && allCutoffs.length > 0) {
       setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
     } else {
       setWarning(null);
     }
-  }, [filteredCutoffs, loading, isSearching, appliedFilters, allCutoffs.length]);
-
-  const hasFilters = Object.values(filters).some(val => val.trim() !== '');
+  }, [filteredCutoffs, loading, isSearching, filters, allCutoffs.length]);
 
   return (
     <>
@@ -185,7 +238,7 @@ function App() {
             <div className="filter-group">
               <label>Counselling Year</label>
               <select name="year" value={filters.year} onChange={handleFilterChange}>
-                <option value="">All Years</option>
+                <option value="all">All Years</option>
                 <option value="2025">2025</option>
                 <option value="2024">2024</option>
                 <option value="2023">2023</option>
@@ -196,46 +249,33 @@ function App() {
             <div className="filter-group">
               <label>Round Number</label>
               <select name="round" value={filters.round} onChange={handleFilterChange}>
-                <option value="">All Rounds</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-                <option value="6">6</option>
+                <option value="all">All Rounds</option>
+                {roundOptions.map(r => (
+                  <option key={r} value={r}>Round {r}</option>
+                ))}
               </select>
             </div>
-            <div className="filter-group">
+            <div className="filter-group" style={{ zIndex: 10 }}>
               <label>Institute Name</label>
-              <input
-                list="institute-list"
-                name="institute"
-                placeholder="Type or select institute..."
-                value={filters.institute}
-                onChange={handleFilterChange}
-                disabled={loading}
+              <Select
+                options={instituteOptions}
+                onChange={(selected) => handleFilterChange({ target: { name: 'institute', value: selected.value } })}
+                value={instituteOptions.find(opt => opt.value === filters.institute)}
+                styles={customStyles}
+                isSearchable={true}
+                isDisabled={loading}
               />
-              <datalist id="institute-list">
-                {uniqueInstitutes.map((inst, index) => (
-                  <option key={index} value={inst} />
-                ))}
-              </datalist>
             </div>
-            <div className="filter-group">
+            <div className="filter-group" style={{ zIndex: 9 }}>
               <label>Program Name</label>
-              <input
-                list="program-list"
-                name="program"
-                placeholder="Type or select program..."
-                value={filters.program}
-                onChange={handleFilterChange}
-                disabled={loading}
+              <Select
+                options={programOptions}
+                onChange={(selected) => handleFilterChange({ target: { name: 'program', value: selected.value } })}
+                value={programOptions.find(opt => opt.value === filters.program)}
+                styles={customStyles}
+                isSearchable={true}
+                isDisabled={loading}
               />
-              <datalist id="program-list">
-                {uniquePrograms.map((prog, index) => (
-                  <option key={index} value={prog} />
-                ))}
-              </datalist>
             </div>
             <div className="filter-group">
               <label>Category</label>
@@ -245,7 +285,7 @@ function App() {
                 onChange={handleFilterChange}
                 disabled={loading}
               >
-                <option value="">All Categories</option>
+                <option value="all">All Categories</option>
                 {uniqueCategories.map((cat, index) => (
                   <option key={index} value={cat}>{cat}</option>
                 ))}
@@ -259,7 +299,7 @@ function App() {
                 onChange={handleFilterChange}
                 disabled={loading}
               >
-                <option value="">All Quotas</option>
+                <option value="all">All Quotas</option>
                 {uniqueQuotas.map((quota, index) => (
                   <option key={index} value={quota}>{quota}</option>
                 ))}
@@ -273,7 +313,7 @@ function App() {
                 onChange={handleFilterChange}
                 disabled={loading}
               >
-                <option value="">All Genders</option>
+                <option value="all">All Genders</option>
                 {uniqueGenders.map((gen, index) => (
                   <option key={index} value={gen}>{gen}</option>
                 ))}
@@ -281,25 +321,21 @@ function App() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            {/* Keeping the search button mainly to trigger the isSearching artificial delay, if desired, otherwise we removed its purpose. */}
+            {/* We'll leave it in but it works even without clicking it because of useMemo. */}
             <button 
               className="search-btn" 
               onClick={handleSearch} 
-              disabled={loading || !hasFilters || isSearching} 
-              style={{ flex: 1, backgroundColor: '#3b82f6', color: 'white', border: 'none', fontWeight: 'bold', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', opacity: (!hasFilters || isSearching) ? 0.6 : 1 }}
+              disabled={loading || isSearching} 
+              style={{ flex: 1, backgroundColor: '#3b82f6', color: 'white', border: 'none', fontWeight: 'bold', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', opacity: (loading || isSearching) ? 0.6 : 1 }}
             >
-              {isSearching ? 'Searching...' : 'Search Cutoffs'}
+              {isSearching ? 'Refreshing...' : 'Apply Filters Manually'}
             </button>
             <button className="reset-btn" onClick={handleResetFilters} disabled={loading || isSearching} style={{ flex: 1, backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', color: '#60a5fa', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
               Reset Filters
             </button>
           </div>
         </section>
-
-        {!hasFilters && !Object.values(appliedFilters).some(v => v.trim() !== '') && activeTab === 'search' && !loading && (
-          <div className="glass-container info-alert" style={{ margin: '2rem 0', borderColor: 'rgba(59, 130, 246, 0.5)', background: 'rgba(59, 130, 246, 0.1)', textAlign: 'center' }}>
-            <p style={{ color: '#60a5fa', fontWeight: '500', fontSize: '1.2rem' }}>Select filters and click Search to view cutoffs.</p>
-          </div>
-        )}
 
         {error && (
           <div className="glass-container error-alert" style={{ margin: '2rem 0', borderColor: 'rgba(239, 68, 68, 0.5)', background: 'rgba(239, 68, 68, 0.1)' }}>
@@ -320,12 +356,11 @@ function App() {
           </div>
         ) : activeTab === 'search' && isSearching ? (
           <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Searching cutoffs...</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Applying filters...</p>
           </div>
-        ) : activeTab === 'search' && Object.values(appliedFilters).some(v => v.trim() !== '') ? (
+        ) : activeTab === 'search' ? (
           <CutoffList 
              cutoffs={filteredCutoffs} 
-             filters={appliedFilters} 
           />
         ) : null}
           </>

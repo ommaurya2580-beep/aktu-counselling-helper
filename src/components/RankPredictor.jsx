@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 
 const RankPredictor = ({ allCutoffs, uniqueCategories, uniqueQuotas, uniquePrograms }) => {
   const [filters, setFilters] = useState({

@@ -11,7 +11,7 @@ const highlightText = (text, highlight) => {
     );
 };
 
-const CutoffList = ({ cutoffs, filters }) => {
+const CutoffList = ({ cutoffs }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +32,7 @@ const CutoffList = ({ cutoffs, filters }) => {
             item.quota?.toLowerCase().includes(lowerSearch) ||
             item.gender?.toLowerCase().includes(lowerSearch)
         );
-    }, [cutoffs, searchTerm, filters]);
+    }, [cutoffs, searchTerm]);
 
     // Sort logic
     const sortedData = useMemo(() => {

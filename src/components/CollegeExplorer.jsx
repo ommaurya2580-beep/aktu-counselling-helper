@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 const CollegeExplorer = ({ allCutoffs, uniqueInstitutes }) => {
   const [selectedInstitutes, setSelectedInstitutes] = useState(['', '', '']); // Up to 3 colleges
-  const [loading, setLoading] = useState(false);
   
   const baselineYear = 2024;
   const baselineRound = 1;

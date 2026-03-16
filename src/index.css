@@ -292,3 +292,10 @@ tbody tr:hover td {
   font-weight: 600;
   color: #e2e8f0;
 }
+
+.institute-input,
+.program-input {
+   width: 100%;
+   white-space: nowrap;
+   overflow: visible;
+}
