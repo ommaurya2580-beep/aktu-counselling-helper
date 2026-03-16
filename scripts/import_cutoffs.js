@@ -34,6 +34,20 @@ const extractNumber = (str) => {
     return match ? parseInt(match[0], 10) : 0;
 };
 
+const normalizeString = (str) => {
+    if (!str) return "";
+    return String(str)
+        .toLowerCase()
+        // Strip out 'and' (whole word) and '&' to handle cases with or without them
+        .replace(/\band\b/g, ' ')
+        .replace(/&/g, ' ')
+        // Remove common punctuation that might cause mismatches
+        .replace(/[,.-]/g, ' ')
+        // Collapse multiple spaces into one and trim
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
 const cleanRecord = (obj) => {
     const newObj = {};
     Object.keys(obj).forEach(key => {
@@ -67,7 +81,9 @@ async function importData() {
                     year: 2024,
                     round: extractNumber(row.round),
                     institute: row.institute?.trim() || "",
+                    institute_normalized: normalizeString(row.institute),
                     program: row.program?.trim() || "",
+                    program_normalized: normalizeString(row.program),
                     stream: row.stream?.trim() || "",
                     quota: row.quota?.trim() || "",
                     category: row.category?.trim() || "",

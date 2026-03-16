@@ -6,6 +6,9 @@ import CollegeExplorer from './components/CollegeExplorer';
 import filterData from './data/filterOptions.json';
 import Select from 'react-select';
 
+import { db } from './services/firebase';
+import { fetchFilteredCutoffs } from './services/firestoreSearch';
+
 const initialFilters = {
   year: 'all',
   round: 'all',
@@ -38,13 +41,73 @@ function App() {
     setFilters(prev => ({ ...prev, [name]: value }));
   }, []);
 
-  const handleSearch = React.useCallback(() => {
-    setIsSearching(true);
-    // Simulate short network delay for better UX
-    setTimeout(() => {
+  const [filteredCutoffs, setFilteredCutoffs] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const executeSearch = React.useCallback(async (isLoadMore = false) => {
+    // Enforce Minimum Filters Validation
+    if (!filters.institute || filters.institute === 'all') {
+      if (!filters.program || filters.program === 'all') {
+        setWarning("Please select at least a Program or Institute to search cutoffs.");
+        return;
+      }
+    }
+
+    if (isLoadMore) {
+      setIsLoadingMore(true);
+    } else {
+      setIsSearching(true);
+      setFilteredCutoffs([]); // clear previous
+    }
+    
+    setError(null);
+    setWarning(null);
+
+    try {
+      const searchOptions = {
+        ...filters,
+        limit: 500,
+        // (Optional) orderByRank: true // Wait for composite index before enabling this
+        lastDocSnapshot: isLoadMore ? lastDoc : null
+      };
+
+      const { results, lastDocSnapshot, hasMore: moreAvailable } = await fetchFilteredCutoffs(db, searchOptions);
+      
+      // Sort results by closing_rank ascending client-side
+      results.sort((a, b) => {
+        const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+        const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+        return rankA - rankB;
+      });
+
+      if (results.length === 0 && !isLoadMore) {
+        setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
+      }
+
+      setFilteredCutoffs(prev => isLoadMore ? [...prev, ...results] : results);
+      setLastDoc(lastDocSnapshot);
+      setHasMore(moreAvailable);
+
+    } catch (err) {
+      console.error("Error fetching cutoffs from Firestore:", err);
+      setError("Failed to fetch search results. Please try again.");
+    } finally {
       setIsSearching(false);
-    }, 400);
-  }, []);
+      setIsLoadingMore(false);
+    }
+  }, [filters, lastDoc]);
+
+  const handleSearch = React.useCallback(() => {
+    executeSearch(false);
+  }, [executeSearch]);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      executeSearch(true);
+    }
+  }, [hasMore, isLoadingMore, executeSearch]);
 
   const handleResetFilters = React.useCallback(() => {
     setFilters(initialFilters);
@@ -78,62 +141,7 @@ function App() {
     return () => { isMounted = false; };
   }, []); // Empty dependency array ensures it runs only ONCE
 
-  const filteredCutoffs = useMemo(() => {
-    if (!allCutoffs || allCutoffs.length === 0) return [];
-
-    function normalize(v) {
-      return String(v || "").trim().toLowerCase();
-    }
-
-    const result = allCutoffs.filter(item => {
-      const year = normalize(item.year);
-      const round = normalize(item.round);
-      const institute = normalize(item.institute);
-      const program = normalize(item.program);
-      const quota = normalize(item.quota);
-      const category = normalize(item.category);
-      // Use fallback to seat_gender just in case dataset has mixed keys
-      const gender = normalize(item.gender || item.seat_gender);
-
-      const fYear = normalize(filters.year);
-      const fRound = normalize(filters.round !== "All Rounds" ? filters.round : "");
-      const fInstitute = normalize(filters.institute);
-      const fProgram = normalize(filters.program);
-      const fQuota = normalize(filters.quota);
-      const fCategory = normalize(filters.category);
-      const fGender = normalize(filters.gender);
-
-      // Exact Matches
-      if (fYear && fYear !== "all" && year !== fYear) return false;
-      if (fQuota && fQuota !== "all" && quota !== fQuota) return false;
-      if (fCategory && fCategory !== "all" && category !== fCategory) return false;
-      if (fGender && fGender !== "all" && fGender !== "all genders" && gender !== fGender) return false;
-
-      // Extract Round Number to handle "Round 1" vs "1"
-      const roundNumber = round.replace("round", "").trim();
-      const filterRound = fRound.replace("round", "").trim();
-      if (filterRound && filterRound !== "all" && roundNumber !== filterRound) return false;
-
-      // Partial Matches
-      if (fInstitute && fInstitute !== "all" && !institute.includes(fInstitute)) return false;
-      if (fProgram && fProgram !== "all" && !program.includes(fProgram)) return false;
-
-      return true;
-    });
-
-    console.log("Filters:", filters);
-    console.log("Sample row:", result[0]);
-    console.log("Filtered results:", result.length);
-
-    // 3. Sort by closing_rank ascending
-    result.sort((a, b) => {
-      const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-      const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-      return rankA - rankB;
-    });
-
-    return result;
-  }, [allCutoffs, filters]);
+  // (Static dataset still loaded for dropdown dynamic options if needed)
 
   const roundOptions = useMemo(() => {
     if (!allCutoffs || allCutoffs.length === 0) return [];
@@ -192,15 +200,7 @@ function App() {
     })
   };
 
-  // Warning for empty search results
-  useEffect(() => {
-    const hasApplied = Object.values(filters).some(v => v !== 'all' && v.trim() !== '');
-    if (!loading && !isSearching && hasApplied && filteredCutoffs.length === 0 && allCutoffs.length > 0) {
-      setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
-    } else {
-      setWarning(null);
-    }
-  }, [filteredCutoffs, loading, isSearching, filters, allCutoffs.length]);
+  // Warning handled during fetch
 
   return (
     <>
@@ -365,9 +365,35 @@ function App() {
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Applying filters...</p>
           </div>
         ) : activeTab === 'search' ? (
-          <CutoffList 
-             cutoffs={filteredCutoffs} 
-          />
+          <>
+            <CutoffList 
+               cutoffs={filteredCutoffs} 
+            />
+            {hasMore ? (
+              <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '2rem' }}>
+                <button 
+                  onClick={handleLoadMore} 
+                  disabled={isLoadingMore}
+                  style={{
+                    padding: '0.75rem 2rem', 
+                    borderRadius: '8px', 
+                    background: 'rgba(59, 130, 246, 0.2)', 
+                    color: '#60a5fa', 
+                    border: '1px solid #3b82f6', 
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    opacity: isLoadingMore ? 0.6 : 1
+                  }}
+                >
+                  {isLoadingMore ? 'Loading...' : 'Load More'}
+                </button>
+              </div>
+            ) : filteredCutoffs.length > 0 ? (
+               <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>
+                 No more results.
+               </div>
+            ) : null}
+          </>
         ) : null}
           </>
         )}
