@@ -103,12 +103,18 @@ function App() {
       const fCategory = normalize(filters.category);
       const fGender = normalize(filters.gender);
 
+      // Exact Matches
       if (fYear && fYear !== "all" && year !== fYear) return false;
-      if (fRound && fRound !== "all" && round !== fRound) return false;
       if (fQuota && fQuota !== "all" && quota !== fQuota) return false;
       if (fCategory && fCategory !== "all" && category !== fCategory) return false;
-      if (fGender && fGender !== "all" && gender !== fGender) return false;
+      if (fGender && fGender !== "all" && fGender !== "all genders" && gender !== fGender) return false;
 
+      // Extract Round Number to handle "Round 1" vs "1"
+      const roundNumber = round.replace("round", "").trim();
+      const filterRound = fRound.replace("round", "").trim();
+      if (filterRound && filterRound !== "all" && roundNumber !== filterRound) return false;
+
+      // Partial Matches
       if (fInstitute && fInstitute !== "all" && !institute.includes(fInstitute)) return false;
       if (fProgram && fProgram !== "all" && !program.includes(fProgram)) return false;
 
@@ -116,7 +122,7 @@ function App() {
     });
 
     console.log("Filters:", filters);
-    console.log("Dataset sample:", allCutoffs[0]);
+    console.log("Sample row:", result[0]);
     console.log("Filtered results:", result.length);
 
     // 3. Sort by closing_rank ascending
