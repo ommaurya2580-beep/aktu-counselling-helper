@@ -47,14 +47,6 @@ function App() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const executeSearch = React.useCallback(async (isLoadMore = false) => {
-    // Enforce Minimum Filters Validation
-    if (!filters.institute || filters.institute === 'all') {
-      if (!filters.program || filters.program === 'all') {
-        setWarning("Please select at least a Program or Institute to search cutoffs.");
-        return;
-      }
-    }
-
     if (isLoadMore) {
       setIsLoadingMore(true);
     } else {
