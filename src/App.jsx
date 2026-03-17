@@ -69,7 +69,6 @@ function App() {
       const searchOptions = {
         ...filters,
         limit: 500,
-        // (Optional) orderByRank: true // Wait for composite index before enabling this
         lastDocSnapshot: isLoadMore ? lastDoc : null
       };
 
@@ -91,13 +90,65 @@ function App() {
       setHasMore(moreAvailable);
 
     } catch (err) {
-      console.error("Error fetching cutoffs from Firestore:", err);
-      setError("Failed to fetch search results. Please try again.");
+      console.warn("Firestore fetch failed. Falling back to local data...", err);
+      
+      // Fallback to local data filtering if Firestore fails (e.g. dummy credentials)
+      try {
+        const { normalizeString } = await import('./utils/stringUtils');
+        let localResults = allCutoffs;
+
+        if (filters.year && filters.year !== 'all') {
+          localResults = localResults.filter(item => String(item.year) === String(filters.year));
+        }
+        if (filters.round && filters.round !== 'all' && filters.round !== 'All Rounds') {
+          const roundNumber = String(filters.round).replace(/round/i, "").trim();
+          localResults = localResults.filter(item => String(item.round) === roundNumber);
+        }
+        if (filters.institute && filters.institute !== 'all') {
+          const targetInst = normalizeString(filters.institute);
+          localResults = localResults.filter(item => normalizeString(item.institute) === targetInst);
+        }
+        if (filters.program && filters.program !== 'all') {
+          const targetProg = normalizeString(filters.program);
+          localResults = localResults.filter(item => normalizeString(item.program) === targetProg);
+        }
+        if (filters.category && filters.category !== 'all' && filters.category !== 'All Categories') {
+          localResults = localResults.filter(item => item.category === filters.category);
+        }
+        if (filters.quota && filters.quota !== 'all' && filters.quota !== 'All Quotas') {
+          localResults = localResults.filter(item => item.quota === filters.quota);
+        }
+        if (filters.gender && filters.gender !== 'all' && filters.gender !== 'All Genders') {
+          localResults = localResults.filter(item => item.gender === filters.gender);
+        }
+
+        localResults.sort((a, b) => {
+          const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+          const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
+          return rankA - rankB;
+        });
+
+        if (localResults.length === 0 && !isLoadMore) {
+          setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
+        }
+
+        // Limit the local results payload to avoid memory bloat in rendering
+        const limitedResults = localResults.slice(0, 500);
+
+        setFilteredCutoffs(limitedResults);
+        setLastDoc(null);
+        setHasMore(false); // Disable "Load More" for local fallback since we show up to 500
+        setError(null); // Clear error because fallback succeeded
+      } catch (fallbackErr) {
+        console.error("Local fallback also failed:", fallbackErr);
+        setError("Failed to fetch search results. Please try again.");
+      }
+
     } finally {
       setIsSearching(false);
       setIsLoadingMore(false);
     }
-  }, [filters, lastDoc]);
+  }, [filters, lastDoc, allCutoffs]);
 
   const handleSearch = React.useCallback(() => {
     executeSearch(false);
