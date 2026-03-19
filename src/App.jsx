@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { normalizeString } from './utils/stringUtils'; // [PERF] top-level import — used at load time for pre-normalization
 import CutoffList from './components/CutoffList';
 import CutoffTrendGraph from './components/CutoffTrendGraph';
 import RankPredictor from './components/RankPredictor';
@@ -46,101 +47,103 @@ function App() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const executeSearch = React.useCallback(async (isLoadMore = false) => {
+  // [STEP 3+4 FIX] Pure local-JSON filter using pre-normalized fields.
+  const executeSearch = React.useCallback((isLoadMore = false) => {
     if (isLoadMore) {
       setIsLoadingMore(true);
     } else {
       setIsSearching(true);
-      setFilteredCutoffs([]); // clear previous
+      setFilteredCutoffs([]);
     }
-    
+
     setError(null);
     setWarning(null);
 
-    try {
-      const searchOptions = {
-        ...filters,
-        limit: 500,
-        lastDocSnapshot: isLoadMore ? lastDoc : null
-      };
-
-      const { results, lastDocSnapshot, hasMore: moreAvailable } = await fetchFilteredCutoffs(db, searchOptions);
-      
-      // Sort results by closing_rank ascending client-side
-      results.sort((a, b) => {
-        const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-        const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-        return rankA - rankB;
-      });
-
-      if (results.length === 0 && !isLoadMore) {
-        setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
-      }
-
-      setFilteredCutoffs(prev => isLoadMore ? [...prev, ...results] : results);
-      setLastDoc(lastDocSnapshot);
-      setHasMore(moreAvailable);
-
-    } catch (err) {
-      console.warn("Firestore fetch failed. Falling back to local data...", err);
-      
-      // Fallback to local data filtering if Firestore fails (e.g. dummy credentials)
-      try {
-        const { normalizeString } = await import('./utils/stringUtils');
-        let localResults = allCutoffs;
-
-        if (filters.year && filters.year !== 'all') {
-          localResults = localResults.filter(item => String(item.year) === String(filters.year));
-        }
-        if (filters.round && filters.round !== 'all' && filters.round !== 'All Rounds') {
-          const roundNumber = String(filters.round).replace(/round/i, "").trim();
-          localResults = localResults.filter(item => String(item.round) === roundNumber);
-        }
-        if (filters.institute && filters.institute !== 'all') {
-          const targetInst = normalizeString(filters.institute);
-          localResults = localResults.filter(item => normalizeString(item.institute) === targetInst);
-        }
-        if (filters.program && filters.program !== 'all') {
-          const targetProg = normalizeString(filters.program);
-          localResults = localResults.filter(item => normalizeString(item.program) === targetProg);
-        }
-        if (filters.category && filters.category !== 'all' && filters.category !== 'All Categories') {
-          localResults = localResults.filter(item => item.category === filters.category);
-        }
-        if (filters.quota && filters.quota !== 'all' && filters.quota !== 'All Quotas') {
-          localResults = localResults.filter(item => item.quota === filters.quota);
-        }
-        if (filters.gender && filters.gender !== 'all' && filters.gender !== 'All Genders') {
-          localResults = localResults.filter(item => item.gender === filters.gender);
-        }
-
-        localResults.sort((a, b) => {
-          const rankA = parseInt(a.closing_rank) || parseInt(a.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-          const rankB = parseInt(b.closing_rank) || parseInt(b.closing_rank?.toString().replace(/,/g, '')) || 9999999;
-          return rankA - rankB;
-        });
-
-        if (localResults.length === 0 && !isLoadMore) {
-          setWarning("No exact cutoff found for the selected filters. Try removing some filters.");
-        }
-
-        // Limit the local results payload to avoid memory bloat in rendering
-        const limitedResults = localResults.slice(0, 500);
-
-        setFilteredCutoffs(limitedResults);
-        setLastDoc(null);
-        setHasMore(false); // Disable "Load More" for local fallback since we show up to 500
-        setError(null); // Clear error because fallback succeeded
-      } catch (fallbackErr) {
-        console.error("Local fallback also failed:", fallbackErr);
-        setError("Failed to fetch search results. Please try again.");
-      }
-
-    } finally {
+    // Safety guard: dataset not yet loaded
+    if (!allCutoffs?.length) {
+      setFilteredCutoffs([]);
+      setWarning("Dataset still loading. Please wait and try again.");
       setIsSearching(false);
       setIsLoadingMore(false);
+      return;
     }
-  }, [filters, lastDoc, allCutoffs]);
+
+    // [STEP 5 DEBUG] Log applied filters so we can trace mismatches
+    console.info('[DEBUG] executeSearch called with filters:', JSON.stringify(filters));
+
+    console.time('[PERF] local filter+sort');
+    let localResults = allCutoffs;
+
+    // [STEP 4 FIX] Year — use year_norm (pre-computed string, always trimmed)
+    // OLD BUG: String(item.year) could include whitespace or be a number, causing mismatches
+    if (filters.year && filters.year !== 'all') {
+      const yTarget = String(filters.year).trim();
+      localResults = localResults.filter(item => item.year_norm === yTarget);
+      console.info(`[DEBUG] After year="${yTarget}" filter: ${localResults.length} records`);
+    }
+
+    // [STEP 4 FIX] Round — direct string compare on round_norm (works for both "1" and "Special Round")
+    // OLD BUG: built roundTarget by stripping "Round " and then comparing, which broke named rounds
+    if (filters.round && filters.round !== 'all' && filters.round !== 'All Rounds') {
+      const rTarget = String(filters.round).trim();
+      localResults = localResults.filter(item => item.round_norm === rTarget);
+      console.info(`[DEBUG] After round="${rTarget}" filter: ${localResults.length} records`);
+    }
+
+    // Institute — pre-computed institute_lower; normalizeString called ONCE (not per item)
+    if (filters.institute && filters.institute !== 'all') {
+      const instTarget = normalizeString(filters.institute);
+      localResults = localResults.filter(item => item.institute_lower === instTarget);
+    }
+
+    // Program — exact match first (fast path), .includes() fallback for partial names
+    if (filters.program && filters.program !== 'all') {
+      const progTarget = normalizeString(filters.program);
+      localResults = localResults.filter(item =>
+        item.program_lower === progTarget ||
+        item.program_lower.includes(progTarget)
+      );
+    }
+
+    // Category, Quota, Gender — simple exact string compare (fastest possible)
+    if (filters.category && filters.category !== 'all' && filters.category !== 'All Categories') {
+      localResults = localResults.filter(item => item.category === filters.category);
+    }
+    if (filters.quota && filters.quota !== 'all' && filters.quota !== 'All Quotas') {
+      localResults = localResults.filter(item => item.quota === filters.quota);
+    }
+    if (filters.gender && filters.gender !== 'all' && filters.gender !== 'All Genders') {
+      localResults = localResults.filter(item => item.gender === filters.gender);
+    }
+
+    // Sort by closing_rank ascending
+    localResults.sort((a, b) => (parseInt(a.closing_rank) || 9999999) - (parseInt(b.closing_rank) || 9999999));
+
+    console.timeEnd('[PERF] local filter+sort');
+    console.info(`[PERF] Final results: ${localResults.length} total, showing up to 500`);
+
+    if (localResults.length === 0 && !isLoadMore) {
+      // [STEP 6] Helpful message for 2025 — tell user data exists but filter may be too strict
+      const year2025count = allCutoffs.filter(r => r.year_norm === '2025').length;
+      if (filters.year === '2025' && year2025count > 0) {
+        setWarning(`No results for your current 2025 filters. (${year2025count} total 2025 records loaded — try fewer filters.)`);
+      } else {
+        setWarning("No cutoffs found for those filters. Try removing one or more filters.");
+      }
+    }
+
+    const limitedResults = localResults.slice(0, 500);
+
+    // setTimeout(0) — yields browser paint cycle before committing state → no UI freeze
+    setTimeout(() => {
+      setFilteredCutoffs(limitedResults);
+      setLastDoc(null);
+      setHasMore(false);
+      setIsSearching(false);
+      setIsLoadingMore(false);
+    }, 0);
+  }, [filters, allCutoffs]);
+
 
   const handleSearch = React.useCallback(() => {
     executeSearch(false);
@@ -167,9 +170,47 @@ function App() {
         const response = await fetch('/cutoffs.min.json');
         if (!response.ok) throw new Error('Failed to load dataset');
         const data = await response.json();
-        console.log("Dataset loaded:", data.length);
+
+        // [STEP A] Time the pre-processing step so we can see cost in DevTools console
+        console.time('[PERF] preprocessing');
+
+        // Pre-normalize ALL fields ONCE at load time — never repeat in filter loops.
+        // year_norm    — trimmed string ("2024" / "2025"), safe for === comparison
+        // round_norm   — FULL trimmed value, NOT stripped of non-numeric labels.
+        //                e.g. "Round 1" → "1", "Special Round" → "Special Round", "Spot Round" → "Spot Round"
+        //                BUG WAS HERE: old code did parseInt(round_norm) in yearRoundMap → NaN for named rounds → 2025 missing
+        // institute_lower, program_lower — exact equality match in filter
+        // program_norm  — short-code exact match (e.g. "cse", "it", "ece")
+        // category_norm — lowercase normalized once
+        const processed = data.map(item => {
+          const rawRound = String(item.round ?? '').trim();
+          // For numeric-prefix rounds ("Round 1", "Round 2") → normalize to just the number ("1", "2")
+          // For named rounds ("Special Round", "Spot Round", "Mop-up Round") → keep as-is (trimmed)
+          const round_norm = /^Round\s*\d+$/i.test(rawRound)
+            ? rawRound.replace(/^Round\s*/i, '').trim()
+            : rawRound; // preserve "Special Round", "Spot Round", etc.
+
+          return {
+            ...item,
+            year_norm:       String(item.year ?? '').trim(),   // "2024" or "2025" — always string
+            institute_lower: normalizeString(item.institute),
+            program_lower:   normalizeString(item.program),
+            program_norm:    (item.program ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').trim().split(/\s+/).pop() || '',
+            round_norm,          // full label for named rounds, digit string for numeric
+            category_norm:   normalizeString(item.category),
+          };
+        });
+
+        console.timeEnd('[PERF] preprocessing');
+        console.info(`[PERF] Loaded & pre-processed ${processed.length} records.`);
+
+        // [STEP 5 DEBUG] Year distribution — confirm 2024 + 2025 both present
+        const yearDist = {};
+        for (const r of processed) { yearDist[r.year_norm] = (yearDist[r.year_norm] || 0) + 1; }
+        console.info('[DEBUG] Year distribution after preprocessing:', yearDist);
+
         if (isMounted) {
-          setAllCutoffs(data);
+          setAllCutoffs(processed);
           setLoading(false);
         }
       } catch (err) {
@@ -182,25 +223,68 @@ function App() {
     };
     loadStaticData();
     return () => { isMounted = false; };
-  }, []); // Empty dependency array ensures it runs only ONCE
+  }, []); // Empty array → runs exactly ONCE
 
   // (Static dataset still loaded for dropdown dynamic options if needed)
 
-  const roundOptions = useMemo(() => {
-    if (!allCutoffs || allCutoffs.length === 0) return [];
-    
-    let relevantCutoffs = allCutoffs;
-    if (filters.year && filters.year !== 'all') {
-      relevantCutoffs = allCutoffs.filter(item => String(item.year) === String(filters.year));
+  // [STEP 2 FIX] Build year→rounds map ONCE. Use year_norm + round_norm (both strings).
+  // BUG WAS HERE: old code did parseInt(item.round_norm) — returned NaN for "Special Round",
+  // "Spot Round", "Mop-up Round" etc. → if (!isNaN(r)) skipped them ALL → year 2025 had empty map.
+  const yearRoundMap = useMemo(() => {
+    if (!allCutoffs.length) return {};
+    const map = {};
+    for (const item of allCutoffs) {
+      const y = item.year_norm || String(item.year ?? '').trim(); // prefer pre-computed year_norm
+      const r = item.round_norm;                                   // full string: "1", "2", "Special Round" etc.
+      if (!y || !r) continue;
+      if (!map[y]) map[y] = new Set();
+      map[y].add(r);
+    }
+    // Sort: numeric rounds first (1, 2, 3…) then named rounds alphabetically
+    const result = {};
+    for (const y in map) {
+      const rounds = [...map[y]];
+      result[y] = rounds.sort((a, b) => {
+        const aNum = parseInt(a), bNum = parseInt(b);
+        const aIsNum = !isNaN(aNum), bIsNum = !isNaN(bNum);
+        if (aIsNum && bIsNum) return aNum - bNum;     // both numeric → sort by value
+        if (aIsNum) return -1;                         // numeric before named
+        if (bIsNum) return  1;
+        return a.localeCompare(b);                     // both named → alphabetical
+      });
     }
 
-    const rounds = [...new Set(relevantCutoffs.map(item => item.round))].filter(Boolean);
-    const sortedRounds = rounds
-      .map(r => parseInt(r))
-      .filter(r => !isNaN(r))
-      .sort((a, b) => a - b);
-    return sortedRounds.map(r => String(r));
-  }, [allCutoffs, filters.year]);
+    // [STEP 5 DEBUG] Log map so we can confirm 2025 rounds appear
+    console.info('[DEBUG] yearRoundMap built:', Object.fromEntries(
+      Object.entries(result).map(([y, rs]) => [y, rs.length + ' rounds: ' + rs.join(', ')])
+    ));
+    return result;
+  }, [allCutoffs]);
+
+  // O(1) lookup — no iteration on year dropdown change
+  const roundOptions = useMemo(() => {
+    if (!allCutoffs.length) return [];
+
+    let rounds;
+    if (!filters.year || filters.year === 'all') {
+      // Merge all years' rounds into one sorted list
+      const allRounds = new Set();
+      for (const rs of Object.values(yearRoundMap)) rs.forEach(r => allRounds.add(r));
+      rounds = [...allRounds];
+    } else {
+      rounds = yearRoundMap[String(filters.year)] || [];
+    }
+
+    // Same sort: numeric first, then named
+    return [...rounds].sort((a, b) => {
+      const aNum = parseInt(a), bNum = parseInt(b);
+      const aIsNum = !isNaN(aNum), bIsNum = !isNaN(bNum);
+      if (aIsNum && bIsNum) return aNum - bNum;
+      if (aIsNum) return -1;
+      if (bIsNum) return  1;
+      return a.localeCompare(b);
+    });
+  }, [yearRoundMap, filters.year, allCutoffs.length]);
 
   const instituteOptions = useMemo(() => {
     return [
