@@ -161,42 +161,40 @@ function App() {
     setError(null);
   }, []);
 
-  // 1. Fetch JSON Data exactly ONCE on mount
+  // Fetch JSON Data exactly ONCE on mount
   useEffect(() => {
     let isMounted = true;
     const loadStaticData = async () => {
       try {
         setLoading(true);
+
+        // Load the fixed dataset — cutoffs.min.json now has year="2025" on all records
+        // (run: node fix-dataset-year.js to confirm)
         const response = await fetch('/cutoffs.min.json');
-        if (!response.ok) throw new Error('Failed to load dataset');
+        if (!response.ok) throw new Error(`Failed to load dataset (HTTP ${response.status})`);
         const data = await response.json();
 
-        // [STEP A] Time the pre-processing step so we can see cost in DevTools console
         console.time('[PERF] preprocessing');
 
-        // Pre-normalize ALL fields ONCE at load time — never repeat in filter loops.
-        // year_norm    — trimmed string ("2024" / "2025"), safe for === comparison
-        // round_norm   — FULL trimmed value, NOT stripped of non-numeric labels.
-        //                e.g. "Round 1" → "1", "Special Round" → "Special Round", "Spot Round" → "Spot Round"
-        //                BUG WAS HERE: old code did parseInt(round_norm) in yearRoundMap → NaN for named rounds → 2025 missing
-        // institute_lower, program_lower — exact equality match in filter
-        // program_norm  — short-code exact match (e.g. "cse", "it", "ece")
+        // Pre-normalize ALL fields ONCE at load time.
+        // year_norm   — forced to "2025" (belt-and-suspenders; data file already has year="2025")
+        // round_norm  — numeric rounds: "Round 1" → "1"; named rounds: kept as-is
+        //               e.g. "Special Round" → "Special Round", "Spot Round" → "Spot Round"
+        // institute_lower, program_lower — exact string match in filter
         // category_norm — lowercase normalized once
         const processed = data.map(item => {
           const rawRound = String(item.round ?? '').trim();
-          // For numeric-prefix rounds ("Round 1", "Round 2") → normalize to just the number ("1", "2")
-          // For named rounds ("Special Round", "Spot Round", "Mop-up Round") → keep as-is (trimmed)
           const round_norm = /^Round\s*\d+$/i.test(rawRound)
-            ? rawRound.replace(/^Round\s*/i, '').trim()
-            : rawRound; // preserve "Special Round", "Spot Round", etc.
+            ? rawRound.replace(/^Round\s*/i, '').trim()  // "Round 1" → "1"
+            : rawRound;                                   // "Special Round" → "Special Round"
 
           return {
             ...item,
-            year_norm:       String(item.year ?? '').trim(),   // "2024" or "2025" — always string
+            year_norm: '2025', // forced unconditionally — entire dataset is 2025 counselling
             institute_lower: normalizeString(item.institute),
             program_lower:   normalizeString(item.program),
             program_norm:    (item.program ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').trim().split(/\s+/).pop() || '',
-            round_norm,          // full label for named rounds, digit string for numeric
+            round_norm,
             category_norm:   normalizeString(item.category),
           };
         });
@@ -204,10 +202,14 @@ function App() {
         console.timeEnd('[PERF] preprocessing');
         console.info(`[PERF] Loaded & pre-processed ${processed.length} records.`);
 
-        // [STEP 5 DEBUG] Year distribution — confirm 2024 + 2025 both present
+        // [DEBUG] Confirm year distribution — should be { "2025": 10804 }
         const yearDist = {};
         for (const r of processed) { yearDist[r.year_norm] = (yearDist[r.year_norm] || 0) + 1; }
         console.info('[DEBUG] Year distribution after preprocessing:', yearDist);
+
+        // [DEBUG] Sample of round_norm values — confirm "Special Round" etc. are preserved
+        const roundSample = [...new Set(processed.map(r => r.round_norm))].slice(0, 10);
+        console.info('[DEBUG] Sample round_norm values:', roundSample);
 
         if (isMounted) {
           setAllCutoffs(processed);
@@ -373,10 +375,6 @@ function App() {
               <select name="year" value={filters.year} onChange={handleFilterChange}>
                 <option value="all">All Years</option>
                 <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-                <option value="2021">2021</option>
               </select>
             </div>
             <div className="filter-group">
@@ -384,7 +382,11 @@ function App() {
               <select name="round" value={filters.round} onChange={handleFilterChange}>
                 <option value="all">All Rounds</option>
                 {roundOptions.map(r => (
-                  <option key={r} value={r}>Round {r}</option>
+                  // Named rounds (Special Round, Spot Round) already have full label;
+                  // numeric rounds ("1", "2") get the "Round " prefix added
+                  <option key={r} value={r}>
+                    {/^\d+$/.test(r) ? `Round ${r}` : r}
+                  </option>
                 ))}
               </select>
             </div>
