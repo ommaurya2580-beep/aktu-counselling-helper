@@ -299,3 +299,276 @@ tbody tr:hover td {
    white-space: nowrap;
    overflow: visible;
 }
+
+/* ═══════════════════════════════════════════════════
+   COLLEGE COMPARISON PAGE
+══════════════════════════════════════════════════ */
+.cc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Header card ── */
+.cc-header { padding: 2rem; }
+
+.cc-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 0.4rem;
+}
+
+.cc-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* ── Search ── */
+.cc-search-wrapper { position: relative; }
+
+.cc-search-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.cc-search-input {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.8rem 1.1rem;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cc-search-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+.cc-search-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cc-clear-btn {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.cc-clear-btn:hover { background: rgba(239,68,68,0.25); }
+
+/* ── Dropdown ── */
+.cc-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: #1e293b;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  list-style: none;
+  z-index: 50;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+.cc-dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+.cc-dropdown-item:hover { background: rgba(59,130,246,0.15); }
+.cc-dropdown-name  { font-weight: 600; color: var(--text-primary); }
+.cc-dropdown-meta  { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }
+.cc-no-results {
+  padding: 0.9rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* ── Chips ── */
+.cc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+.cc-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(59,130,246,0.15);
+  border: 1px solid rgba(59,130,246,0.35);
+  color: #93c5fd;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem 0.35rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: popIn 0.2s ease;
+}
+@keyframes popIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.cc-chip-remove {
+  background: none;
+  border: none;
+  color: #93c5fd;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: 2px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.cc-chip-remove:hover { opacity: 1; }
+.cc-chips-hint { font-size: 0.8rem; color: var(--text-secondary); }
+.cc-empty-hint { color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem; text-align: center; }
+
+/* ── Score cards ── */
+.cc-score-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.cc-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 2px solid;
+  border-radius: 16px;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.2s;
+}
+.cc-card:hover { transform: translateY(-4px); }
+.cc-card-rank  { font-size: 1rem; font-weight: 700; }
+.cc-card-score { font-size: 0.85rem; color: var(--text-secondary); }
+.cc-card-score strong { color: var(--text-primary); font-size: 1rem; }
+.cc-card-name  { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.cc-card-meta  { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
+
+/* ── Badges ── */
+.cc-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+.cc-badge-gov { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.cc-badge-pvt { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+.cc-badge-loc { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); font-size: 0.72rem; }
+
+/* ── Comparison table ── */
+.cc-table-wrapper { padding: 0; overflow-x: auto; }
+.cc-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+.cc-th-label, .cc-th-college {
+  padding: 1rem 1.1rem;
+  background: rgba(15,23,42,0.95);
+  border-bottom: 2px solid var(--glass-border);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.cc-th-label   { color: var(--text-secondary); width: 160px; min-width: 130px; }
+.cc-th-college { text-align: center; }
+.cc-th-empty   { color: var(--text-secondary); text-align: center; }
+.cc-th-name    { color: var(--text-primary); }
+.cc-th-sub     { color: var(--text-secondary); font-weight: 400; font-size: 0.73rem; margin-top: 2px; text-transform: none; letter-spacing: 0; }
+
+.cc-stat-row { transition: background 0.15s; }
+.cc-stat-row:hover { background: rgba(255,255,255,0.03); }
+.cc-stat-row:nth-child(even) { background: rgba(255,255,255,0.015); }
+
+.cc-stat-label {
+  padding: 0.85rem 1.1rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap;
+}
+.cc-stat-val {
+  padding: 0.85rem 1.1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.cc-best  { color: #4ade80 !important; background: rgba(34,197,94,0.08) !important; }
+.cc-worst { color: #f87171 !important; background: rgba(239,68,68,0.08) !important; }
+.cc-empty-col { background: rgba(0,0,0,0.1) !important; }
+
+/* ── Recruiters ── */
+.cc-companies-row td { vertical-align: top; }
+.cc-companies-cell { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center; }
+.cc-company-tag {
+  background: rgba(139,92,246,0.12);
+  border: 1px solid rgba(139,92,246,0.25);
+  color: #c4b5fd;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+}
+.cc-company-more { color: var(--text-secondary); font-size: 0.75rem; align-self: center; }
+
+/* ── Algorithm info ── */
+.cc-algo-info { padding: 1.25rem 1.5rem; }
+.cc-algo-info h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.9rem; color: var(--text-primary); }
+.cc-algo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.cc-algo-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.cc-algo-w { color: #60a5fa; font-weight: 700; margin-right: 0.3rem; }
+.cc-algo-note { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .cc-score-cards { grid-template-columns: 1fr; }
+  .cc-th-label { width: 100px; min-width: 90px; }
+  .cc-search-row { flex-direction: column; align-items: stretch; }
+}

@@ -4,6 +4,7 @@ import CutoffList from './components/CutoffList';
 import CutoffTrendGraph from './components/CutoffTrendGraph';
 import RankPredictor from './components/RankPredictor';
 import CollegeExplorer from './components/CollegeExplorer';
+import CollegeComparison from './pages/CollegeComparison';
 import filterData from './data/filterOptions.json';
 import Select from 'react-select';
 
@@ -341,7 +342,7 @@ function App() {
       <main>
         {/* Navigation Tabs */}
         <div className="tabs-container" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['search', 'analytics', 'predictor', 'colleges'].map(tab => (
+          {['search', 'analytics', 'predictor', 'colleges', 'compare'].map(tab => (
             <button 
               key={tab} 
               onClick={() => setActiveTab(tab)}
@@ -550,6 +551,10 @@ function App() {
             allCutoffs={allCutoffs}
             uniqueInstitutes={uniqueInstitutes}
           />
+        )}
+
+        {activeTab === 'compare' && (
+          <CollegeComparison />
         )}
       </main>
     </>
