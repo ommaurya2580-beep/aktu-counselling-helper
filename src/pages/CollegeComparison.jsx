@@ -244,16 +244,19 @@ export default function CollegeComparison() {
             <ul className="cc-dropdown" role="listbox">
               {filteredList.map(c => (
                 <li
-                  key={c.college}
-                  className="cc-dropdown-item"
-                  role="option"
-                  onClick={() => addCollege(c)}
-                >
+                key={c.college}
+                className="cc-dropdown-item"
+                role="option"
+                onClick={() => addCollege(c)}
+              >
+                <div className="cc-dropdown-info">
                   <span className="cc-dropdown-name">{c.college}</span>
-                  <span className="cc-dropdown-meta">
-                    {c.location} · {c.type}
-                  </span>
-                </li>
+                  <span className="cc-dropdown-meta">{c.location} · {c.type}</span>
+                </div>
+                <span className={`cc-badge ${c.type === 'Government' ? 'cc-badge-gov' : 'cc-badge-pvt'}`}>
+                  {c.type}
+                </span>
+              </li>
               ))}
             </ul>
           )}
@@ -374,13 +377,15 @@ export default function CollegeComparison() {
               <tr className="cc-stat-row cc-companies-row">
                 <td className="cc-stat-label">Top Recruiters</td>
                 {rankedSelection.map(c => (
-                  <td key={c.college} className="cc-stat-val cc-companies-cell">
-                    {c.companies.slice(0, 5).map(co => (
-                      <span key={co} className="cc-company-tag">{co}</span>
-                    ))}
-                    {c.companies.length > 5 && (
-                      <span className="cc-company-more">+{c.companies.length - 5} more</span>
-                    )}
+                  <td key={c.college} className="cc-stat-val" style={{verticalAlign:'top', padding:'0.85rem 1.1rem'}}>
+                    <div className="cc-companies-cell">
+                      {c.companies.slice(0, 6).map(co => (
+                        <span key={co} className="cc-company-tag">{co}</span>
+                      ))}
+                      {c.companies.length > 6 && (
+                        <span className="cc-company-more">+{c.companies.length - 6}</span>
+                      )}
+                    </div>
                   </td>
                 ))}
                 {Array.from({ length: MAX_SELECTED - rankedSelection.length }).map((_, i) => (
