@@ -1,0 +1,41 @@
+diff --git a/src/index.css b/src/index.css
+index c3fdfc4..77a8199 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -396,11 +396,12 @@ tbody tr:hover td {
+   padding: 0.7rem 1rem;
+   cursor: pointer;
+   transition: background 0.15s;
+-  gap: 0.5rem;
++  gap: 0.75rem;
+ }
+ .cc-dropdown-item:hover { background: rgba(59,130,246,0.15); }
+-.cc-dropdown-name  { font-weight: 600; color: var(--text-primary); }
+-.cc-dropdown-meta  { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }
++.cc-dropdown-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
++.cc-dropdown-name  { font-weight: 700; color: var(--text-primary); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
++.cc-dropdown-meta  { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; }
+ .cc-no-results {
+   padding: 0.9rem 1rem;
+   color: var(--text-secondary);
+@@ -535,16 +536,18 @@ tbody tr:hover td {
+ 
+ /* ── Recruiters ── */
+ .cc-companies-row td { vertical-align: top; }
+-.cc-companies-cell { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center; }
++.cc-companies-cell { display: block; line-height: 1.8; text-align: center; }
+ .cc-company-tag {
++  display: inline-block;
+   background: rgba(139,92,246,0.12);
+   border: 1px solid rgba(139,92,246,0.25);
+   color: #c4b5fd;
+   border-radius: 999px;
+   padding: 0.15rem 0.55rem;
+   font-size: 0.72rem;
++  margin: 0.1rem 0.15rem;
+ }
+-.cc-company-more { color: var(--text-secondary); font-size: 0.75rem; align-self: center; }
++.cc-company-more { color: var(--text-secondary); font-size: 0.75rem; }
+ 
+ /* ── Algorithm info ── */
+ .cc-algo-info { padding: 1.25rem 1.5rem; }

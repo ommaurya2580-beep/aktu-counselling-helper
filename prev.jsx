@@ -374,15 +374,13 @@ export default function CollegeComparison() {
               <tr className="cc-stat-row cc-companies-row">
                 <td className="cc-stat-label">Top Recruiters</td>
                 {rankedSelection.map(c => (
-                  <td key={c.college} className="cc-stat-val">
-                    <div className="cc-companies-cell">
-                      {c.companies.slice(0, 5).map(co => (
-                        <span key={co} className="cc-company-tag">{co}</span>
-                      ))}
-                      {c.companies.length > 5 && (
-                        <span className="cc-company-more">+{c.companies.length - 5} more</span>
-                      )}
-                    </div>
+                  <td key={c.college} className="cc-stat-val cc-companies-cell">
+                    {c.companies.slice(0, 5).map(co => (
+                      <span key={co} className="cc-company-tag">{co}</span>
+                    ))}
+                    {c.companies.length > 5 && (
+                      <span className="cc-company-more">+{c.companies.length - 5} more</span>
+                    )}
                   </td>
                 ))}
                 {Array.from({ length: MAX_SELECTED - rankedSelection.length }).map((_, i) => (
