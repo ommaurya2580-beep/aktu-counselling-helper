@@ -29,6 +29,8 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
     category: '',
   });
   
+  const [metric, setMetric] = useState('closing'); // Dual metrics
+  
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,7 +54,17 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
 
   const displayPrograms = programsForInstitute;
 
-  const normalize = (str) => (str || "").toString().trim().toLowerCase();
+  const normalize = (str) =>
+    String(str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
+
+  const programMatch = (itemProgram, selectedProgram) => {
+    const a = normalize(itemProgram);
+    const b = normalize(selectedProgram);
+    return a.includes(b) || b.includes(a);
+  };
 
   const fetchAnalyticsData = () => {
     if (!filters.institute || !filters.program || !filters.category) {
@@ -60,92 +72,99 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
       return;
     }
     if (filters.compareProgram && normalize(filters.program) === normalize(filters.compareProgram)) {
-      alert("Please select different programs to compare");
+      setError("Please select different branches");
       return;
     }
     setLoading(true);
     setError(null);
     setChartData([]);
 
-    // setTimeout to allow UI to show loading state
     setTimeout(() => {
       try {
-        const selectedInstitute = filters.institute;
-        const selectedCategory = filters.category;
-        const primaryProgram = filters.program;
-        const compareProgram = filters.compareProgram;
+        const selectedInstitute = normalize(filters.institute);
+        const selectedCategory = normalize(filters.category);
+        const primaryProgram = normalize(filters.program);
+        const compareProgram = normalize(filters.compareProgram);
 
-        console.log("Selected:", {
-          institute: selectedInstitute,
-          program: primaryProgram,
-          compareProgram: compareProgram,
-          category: selectedCategory
+        // STEP 4 — Correct Filtering Logic
+        const filtered = allCutoffs.filter(item => {
+          if (!item) return false;
+
+          const inst = normalize(item.institute);
+          const cat = normalize(item.category);
+
+          if (selectedInstitute && inst !== selectedInstitute) return false;
+          if (selectedCategory && cat !== selectedCategory) return false;
+
+          return true;
         });
-        if (allCutoffs.length > 0) {
-          console.log("Sample Data:", allCutoffs[0]);
+
+        // STEP 5 — Separate Primary & Compare Data
+        const primaryData = filtered.filter(item =>
+          programMatch(item.program, filters.program)
+        );
+
+        let compareData = [];
+        if (filters.compareProgram) {
+          compareData = filtered.filter(item =>
+            programMatch(item.program, filters.compareProgram)
+          );
         }
 
-        // STEP 1: FILTER DATA
-        const filteredData = allCutoffs.filter(item => {
-          const instMatch = normalize(item.institute_lower) === normalize(selectedInstitute) || normalize(item.institute) === normalize(selectedInstitute);
-          const catMatch = normalize(item.category_norm) === normalize(selectedCategory) || normalize(item.category) === normalize(selectedCategory);
-          const yearMatch = normalize(item.year_norm) === '2025' || normalize(item.year) === '2025';
-          const progMatch = normalize(item.program).includes(normalize(primaryProgram)) || 
-                           (compareProgram && normalize(item.program).includes(normalize(compareProgram)));
-          
-          return instMatch && catMatch && yearMatch && progMatch;
+        // STEP 8 — Group Data by Round
+        const groupByRound = (data) => {
+          const map = {};
+          data.forEach(item => {
+            const roundStr = String(item.round || "").replace(/\D/g, "");
+            if (!roundStr) return;
+            const round = roundStr;
+
+            const closingStr = item.closing_rank ? String(item.closing_rank).replace(/,/g, '') : '0';
+            const closing = Number(closingStr);
+            const openingStr = item.opening_rank ? String(item.opening_rank).replace(/,/g, '') : '0';
+            const opening = Number(openingStr);
+
+            if (!map[round]) map[round] = [];
+            map[round].push({ closing, opening: (!isNaN(opening) && opening > 0) ? opening : closing });
+          });
+          return map;
+        };
+
+        // STEP 9 — Extract Best Rank Per Round
+        const bestRank = (map) => {
+          const result = {};
+          Object.keys(map).forEach(round => {
+            result[round] = {
+              closing: Math.min(...map[round].map(x => x.closing).filter(v => !isNaN(v))),
+              opening: Math.min(...map[round].map(x => x.opening).filter(v => !isNaN(v)))
+            };
+          });
+          return result;
+        };
+
+        const primaryMap = bestRank(groupByRound(primaryData));
+        const compareMap = bestRank(groupByRound(compareData));
+
+        // STEP 10 — Align Rounds Properly
+        const rounds = ["1", "2", "3", "4"];
+
+        const graphData = rounds.map(r => {
+          const pData = primaryMap[r] ?? null;
+          const cData = compareMap[r] ?? null;
+          return {
+            round: `Round ${r}`,
+            primary_closing: pData?.closing && isFinite(pData.closing) ? pData.closing : null,
+            primary_opening: pData?.opening && isFinite(pData.opening) ? pData.opening : null,
+            compare_closing: cData?.closing && isFinite(cData.closing) ? cData.closing : null,
+            compare_opening: cData?.opening && isFinite(cData.opening) ? cData.opening : null
+          };
         });
 
-        console.log("Matched Data:", filteredData.length);
-
-        // STEP 2: GROUP BY ROUND
-        const roundMap = {};
-
-        filteredData.forEach(item => {
-          const roundName = item.round_norm || String(item.round).trim().replace(/^Round\s*/i, '');
-          const roundKey = /^\d+$/.test(roundName) ? `Round ${roundName}` : roundName;
-
-          if (!roundMap[roundKey]) {
-            roundMap[roundKey] = { raw_round: roundName };
-          }
-
-          const itemProgNorm = normalize(item.program);
-          const pClose = parseInt(item.closing_rank) || parseInt(String(item.closing_rank).replace(/,/g, ''));
-          const pOpen = parseInt(item.opening_rank) || parseInt(String(item.opening_rank).replace(/,/g, ''));
-
-          if (itemProgNorm.includes(normalize(primaryProgram))) {
-            roundMap[roundKey].primary_close = pClose;
-            roundMap[roundKey].primary_open = pOpen;
-          }
-
-          if (compareProgram && itemProgNorm.includes(normalize(compareProgram))) {
-            roundMap[roundKey].compare_close = pClose;
-            roundMap[roundKey].compare_open = pOpen;
-          }
-        });
-
-        // STEP 3: CONVERT TO ARRAY
-        const processedChartData = Object.keys(roundMap).map(roundKey => ({
-          round: roundKey,
-          ...roundMap[roundKey]
-        }));
-
-        // Sort rounds
-        processedChartData.sort((a, b) => {
-          const aNum = parseInt(a.raw_round);
-          const bNum = parseInt(b.raw_round);
-          const aIsNum = !isNaN(aNum);
-          const bIsNum = !isNaN(bNum);
-          if (aIsNum && bIsNum) return aNum - bNum;
-          if (aIsNum) return -1;
-          if (bIsNum) return 1;
-          return a.raw_round.localeCompare(b.raw_round);
-        });
-
-        if (processedChartData.length === 0) {
-          setError("No matching data found. Try selecting exact program name.");
+        // STEP 11 — Fix "No Data Found" Condition
+        if (!primaryData.length && !compareData.length) {
+          setError("No data found for selected filters");
         } else {
-          setChartData(processedChartData);
+          setChartData(graphData);
         }
       } catch (err) {
         console.error("Error fetching analytics:", err);
@@ -156,9 +175,64 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
     }, 0);
   };
 
+  const renderBestRound = (isPrimary) => {
+    if (chartData.length === 0) return null;
+    let minRank = Infinity;
+    let bestRound = "";
+    chartData.forEach(d => {
+        const val = isPrimary ? (metric === 'closing' ? d.primary_closing : d.primary_opening) : (metric === 'closing' ? d.compare_closing : d.compare_opening);
+        if (val && val < minRank) {
+            minRank = val;
+            bestRound = d.round;
+        }
+    });
+    if (minRank === Infinity) return null;
+    return <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem' }}>Best chance in <strong style={{ color: 'var(--text-primary)' }}>{bestRound}</strong></div>;
+  };
+
+  const renderTrend = (isPrimary) => {
+    const r1 = chartData.find(d => d.round === "Round 1");
+    // fallback if R4 doesn't exist to R3 or R2
+    const rLast = chartData.find(d => d.round === "Round 4") || chartData.find(d => d.round === "Round 3") || chartData.find(d => d.round === "Round 2");
+    if (!r1 || !rLast) return null;
+    
+    const val1 = isPrimary ? (metric === 'closing' ? r1.primary_closing : r1.primary_opening) : (metric === 'closing' ? r1.compare_closing : r1.compare_opening);
+    const valLast = isPrimary ? (metric === 'closing' ? rLast.primary_closing : rLast.primary_opening) : (metric === 'closing' ? rLast.compare_closing : rLast.compare_opening);
+    
+    if (!val1 || !valLast) return null;
+    
+    if (valLast > val1) {
+        return <div style={{ color: '#4ade80', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Increasing 📈</div>;
+    } else if (valLast < val1) {
+        return <div style={{ color: '#f87171', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Decreasing 📉</div>;
+    }
+    return <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Stable ⚖️</div>;
+  };
+
+  const renderGapAnalysisInner = () => {
+    if (chartData.length === 0) return null;
+    let r1 = chartData.find(d => d.round === "Round 1" && d.primary_closing && d.compare_closing);
+    if (!r1) r1 = chartData.find(d => d.primary_closing && d.compare_closing); // any round with both
+    if (!r1) return <div style={{ color: 'var(--text-secondary)' }}>Not enough overlapping data for gap analysis.</div>;
+
+    const pc = metric === 'closing' ? r1.primary_closing : r1.primary_opening;
+    const cc = metric === 'closing' ? r1.compare_closing : r1.compare_opening;
+    
+    if (!pc || !cc || pc === cc) return <div style={{ color: 'var(--text-secondary)' }}>Extremely similar competetion metrics.</div>;
+    const gap = Math.abs(pc - cc);
+    const moreCompetitive = pc < cc ? filters.program : filters.compareProgram;
+    const lessCompetitive = pc < cc ? filters.compareProgram : filters.program;
+    
+    return (
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem', lineHeight: '1.5' }}>
+            <strong style={{ color: '#60a5fa' }}>{moreCompetitive.split('(')[0].trim()}</strong> is <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{gap.toLocaleString()}</span> ranks more competitive than <strong style={{ color: '#c084fc' }}>{lessCompetitive.split('(')[0].trim()}</strong>.
+        </div>
+    );
+  };
+
   const lineChartData = useMemo(() => {
     const labels = chartData.map(d => d.round);
-    const p1Data = chartData.map(d => d.primary_close || null);
+    const p1Data = chartData.map(d => metric === 'closing' ? d.primary_closing : d.primary_opening);
     
     const datasets = [
       {
@@ -166,23 +240,27 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
         data: p1Data,
         borderColor: '#3b82f6', // Blue
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        tension: 0.3,
+        tension: 0.4, // Smooth curve
         pointRadius: 6,
-        pointHoverRadius: 8
+        pointBackgroundColor: '#3b82f6',
+        pointHoverRadius: 8,
+        spanGaps: false
       }
     ];
 
     if (filters.compareProgram) {
-      const p2Data = chartData.map(d => d.compare_close || null);
+      const p2Data = chartData.map(d => metric === 'closing' ? d.compare_closing : d.compare_opening);
       if (p2Data.some(v => v !== null)) {
         datasets.push({
           label: `Compare: ${filters.compareProgram}`,
           data: p2Data,
           borderColor: '#a855f7', // Purple
           backgroundColor: 'rgba(168, 85, 247, 0.5)',
-          tension: 0.3,
+          tension: 0.4, // Smooth curve
           pointRadius: 6,
-          pointHoverRadius: 8
+          pointBackgroundColor: '#a855f7',
+          pointHoverRadius: 8,
+          spanGaps: false
         });
      }
     }
@@ -191,7 +269,7 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
       labels: labels,
       datasets: datasets
     };
-  }, [chartData, filters.program, filters.compareProgram]);
+  }, [chartData, filters.program, filters.compareProgram, metric]);
 
   const lineChartOptions = {
     responsive: true,
@@ -199,13 +277,24 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
       legend: { position: 'top', labels: { color: '#f8fafc' } },
       title: { 
         display: true, 
-        text: 'Closing Rank vs Round (2025)', 
+        text: `${metric === 'closing' ? 'Closing' : 'Opening'} Rank Trends (2025)`, 
         color: '#f8fafc',
         font: { size: 16 }
       },
       tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#f8fafc',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        padding: 12,
         callbacks: {
-          label: (context) => `Closing Rank: ${context.parsed.y ? context.parsed.y.toLocaleString() : 'N/A'}`
+          label: (context) => {
+            const branchName = context.dataset.label.replace(/^(Primary|Compare):\s*/, '');
+            const val = context.parsed.y ? context.parsed.y.toLocaleString() : 'N/A';
+            const metricName = metric === 'closing' ? 'Closing Rank' : 'Opening Rank';
+            return [`  Branch: ${branchName}`, `  ${metricName}: ${val}`];
+          }
         }
       }
     },
@@ -269,7 +358,47 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
 
       {chartData.length > 0 && (
         <>
-          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+            <button
+              onClick={() => setMetric('closing')}
+              style={{ padding: '0.6rem 1.5rem', borderRadius: '8px', border: metric === 'closing' ? '1px solid #3b82f6' : '1px solid var(--glass-border)', background: metric === 'closing' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)', color: metric === 'closing' ? '#60a5fa' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', fontSize: '0.95rem' }}
+            >
+              Closing Rank
+            </button>
+            <button
+              onClick={() => setMetric('opening')}
+              style={{ padding: '0.6rem 1.5rem', borderRadius: '8px', border: metric === 'opening' ? '1px solid #3b82f6' : '1px solid var(--glass-border)', background: metric === 'opening' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)', color: metric === 'opening' ? '#60a5fa' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', fontSize: '0.95rem' }}
+            >
+              Opening Rank
+            </button>
+          </div>
+
+          <div className="analytics-insights" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  <h3 style={{ color: '#60a5fa', marginBottom: '0.75rem', fontSize: '1.1rem' }}>Primary Insight</h3>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: '500', marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={filters.program}>{filters.program}</div>
+                  {renderBestRound(true)}
+                  {renderTrend(true)}
+              </div>
+
+              {filters.compareProgram && (
+                  <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                      <h3 style={{ color: '#c084fc', marginBottom: '0.75rem', fontSize: '1.1rem' }}>Compare Insight</h3>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: '500', marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={filters.compareProgram}>{filters.compareProgram}</div>
+                      {renderBestRound(false)}
+                      {renderTrend(false)}
+                  </div>
+              )}
+              
+              {filters.compareProgram && (
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.75rem', fontSize: '1.1rem' }}>Gap Analysis</h3>
+                      {renderGapAnalysisInner()}
+                  </div>
+              )}
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', marginBottom: '2rem' }}>
               <Line options={lineChartOptions} data={lineChartData} />
               <p style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 Note: Higher placement on the graph means a more competitive (numerically lower) rank.
@@ -281,19 +410,18 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--glass-border)' }}>
                   <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Round</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Primary Open</th>
-                  <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Primary Close</th>
-                  {filters.compareProgram && <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Compare Open</th>}
-                  {filters.compareProgram && <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Compare Close</th>}
+                  <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Primary {metric === 'closing' ? 'Close' : 'Open'}</th>
+                  {filters.compareProgram && <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Compare {metric === 'closing' ? 'Close' : 'Open'}</th>}
                   {filters.compareProgram && <th style={{ padding: '1rem', color: 'var(--text-primary)' }}>Better</th>}
                 </tr>
               </thead>
               <tbody>
                 {chartData.map((row, idx) => {
                   let better = "-";
+                  const pc = metric === 'closing' ? row.primary_closing : row.primary_opening;
+                  const cc = metric === 'closing' ? row.compare_closing : row.compare_opening;
+
                   if (filters.compareProgram) {
-                    const pc = row.primary_close;
-                    const cc = row.compare_close;
                     if (pc && cc) {
                       if (pc < cc) better = "Primary";
                       else if (cc < pc) better = "Compare";
@@ -305,18 +433,16 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={{ padding: '1rem' }}>{row.round}</td>
-                      <td style={{ padding: '1rem' }}>{row.primary_open ? row.primary_open.toLocaleString() : '-'}</td>
-                      <td style={{ padding: '1rem', color: '#60a5fa', fontWeight: 'bold' }}>{row.primary_close ? row.primary_close.toLocaleString() : '-'}</td>
+                      <td style={{ padding: '1rem', color: '#60a5fa', fontWeight: 'bold' }}>{pc ? pc.toLocaleString() : '-'}</td>
                       
-                      {filters.compareProgram && <td style={{ padding: '1rem' }}>{row.compare_open ? row.compare_open.toLocaleString() : '-'}</td>}
-                      {filters.compareProgram && <td style={{ padding: '1rem', color: '#c084fc', fontWeight: 'bold' }}>{row.compare_close ? row.compare_close.toLocaleString() : '-'}</td>}
+                      {filters.compareProgram && <td style={{ padding: '1rem', color: '#c084fc', fontWeight: 'bold' }}>{cc ? cc.toLocaleString() : '-'}</td>}
                       
                       {filters.compareProgram && (
                         <td style={{ padding: '1rem' }}>
-                          {better === "Primary" && <span style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>Primary ✓</span>}
-                          {better === "Compare" && <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>Compare ✓</span>}
+                          {better === "Primary" && <span style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>Primary ✓</span>}
+                          {better === "Compare" && <span style={{ background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>Compare ✓</span>}
                           {better === "Tie" && <span style={{ color: 'var(--text-secondary)' }}>Tie</span>}
-                          {better === "-" && <span>-</span>}
+                          {better === "-" && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
                         </td>
                       )}
                     </tr>

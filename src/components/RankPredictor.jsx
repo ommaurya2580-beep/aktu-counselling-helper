@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
-const normalize = (str) => String(str || "").toLowerCase().trim();
+// STEP 2 — NORMALIZE FUNCTION
+const normalize = (str) =>
+  String(str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
 
 const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
+  // STEP 1 — LOAD DATA (LOCAL COPY FOR SPEED)
   const [allCutoffs, setAllCutoffs] = useState([]);
   
   const [filters, setFilters] = useState({
@@ -12,14 +18,25 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
     branch: ''
   });
   
-  const [predictions, setPredictions] = useState([]);
+  const [predictions, setPredictions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch('/cutoffs.min.json')
       .then(res => res.json())
-      .then(data => setAllCutoffs(data))
+      .then(data => {
+        // pre-normalize for performance
+        const normalized = data.map(item => ({
+          ...item,
+          institute_lower: normalize(item.institute),
+          program_lower: normalize(item.program),
+          category_lower: normalize(item.category),
+          quota_lower: normalize(item.quota),
+          round_num: Number(String(item.round).replace(/\D/g, ""))
+        }));
+        setAllCutoffs(normalized);
+      })
       .catch(err => console.error("Error loading cutoffs:", err));
   }, []);
 
@@ -28,124 +45,126 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  // STEP 11: PRE-NORMALIZE for heavy filtering
-  const filteredBaseData = useMemo(() => {
-    if (!filters.category || !filters.quota || !filters.branch) return [];
-
-    const normCategory = normalize(filters.category);
-    const normQuota = normalize(filters.quota);
-    const normBranch = normalize(filters.branch);
-
-    return allCutoffs.filter(item => {
-      return (
-        normalize(item.category) === normCategory &&
-        normalize(item.quota) === normQuota &&
-        normalize(item.program).includes(normBranch)
-      );
-    });
-  }, [allCutoffs, filters.category, filters.quota, filters.branch]);
-
   const fetchPredictions = () => {
     if (!filters.rank || !filters.category || !filters.quota || !filters.branch) {
       setError("Please fill all required fields");
       return;
     }
 
-    const currentRank = parseInt(filters.rank);
-    if (isNaN(currentRank) || currentRank <= 0) {
+    const userRank = Number(filters.rank);
+    if (isNaN(userRank) || userRank <= 0) {
       setError("Please enter a valid numeric rank.");
       return;
     }
 
     setLoading(true);
     setError(null);
-    setPredictions([]);
+    setPredictions(null);
 
+    // Using setTimeout to allow UI to show loading state
     setTimeout(() => {
       try {
-        const rounds = {
-          "Round 1": [],
-          "Round 2": [],
-          "Round 3": [],
-          "Round 4": []
+        // STEP 3 — USER INPUT
+        const selectedCategory = normalize(filters.category);
+        const selectedQuota = normalize(filters.quota);
+        const selectedBranch = normalize(filters.branch);
+
+        // STEP 4 — PROGRAM MATCH (FLEXIBLE)
+        const programMatch = (itemProgram) => {
+          return itemProgram.includes(selectedBranch) || selectedBranch.includes(itemProgram);
         };
 
-        filteredBaseData.forEach(item => {
-          let rName = String(item.round).trim().replace(/^Round\s*/i, '');
-          if (/^\d+$/.test(rName)) {
-            rName = `Round ${rName}`;
-          }
-          if (rounds[rName]) {
-            rounds[rName].push(item);
+        // STEP 5 — BASE FILTER (FAST FILTER)
+        const baseData = allCutoffs.filter(item => {
+          if (selectedCategory && item.category_lower !== selectedCategory) return false;
+          if (selectedQuota && item.quota_lower !== selectedQuota) return false;
+          if (selectedBranch && !programMatch(item.program_lower)) return false;
+          return true;
+        });
+
+        // STEP 6 — SORT BY TOP COLLEGES (IMPORTANT)
+        const sortedData = [...baseData].sort(
+          (a, b) => Number(a.closing_rank) - Number(b.closing_rank)
+        );
+
+        // STEP 7 — GROUP BY ROUND
+        const rounds = {
+          1: [],
+          2: [],
+          3: [],
+          4: []
+        };
+
+        sortedData.forEach(item => {
+          if (rounds[item.round_num]) {
+            rounds[item.round_num].push(item);
           }
         });
 
-        const results = [];
-        
-        Object.keys(rounds).forEach(round => {
-          const matches = rounds[round]
-            .map(item => {
-              const closing_str = String(item.closing_rank).replace(/,/g, '');
-              const closing = parseInt(closing_str);
-              if (isNaN(closing)) return null;
+        // STEP 8 — SAFE ZONE LOGIC (CORE ALGORITHM)
+        const SAFE_GAP_MAX = 10000;
 
-              // STEP 1: REPLACE STATUS LOGIC
-              let status = null;
-              let chanceColor = "";
+        const isGoodMatch = (uRank, closingRank) => {
+          const gap = closingRank - uRank;
+          if (gap < 0) return false; // too risky
+          if (gap > SAFE_GAP_MAX) return false; // too far (low quality match)
+          return true;
+        };
 
-              if (currentRank <= closing * 0.7) {
-                status = "SAFE";
-                chanceColor = "#10b981"; // green
-              } else if (currentRank <= closing) {
-                status = "TARGET";
-                chanceColor = "#f59e0b"; // yellow
-              } else {
-                status = "DREAM";
-                chanceColor = "#ef4444"; // red
+        // STEP 14 — EMPTY CASE HANDLE
+        const relaxedMatch = (uRank, closingRank) => {
+            return closingRank >= uRank && closingRank - uRank <= 20000;
+        };
+
+        // STEP 9 & 13 — SELECT TOP COLLEGES PER ROUND & ENSURE VARIETY
+        const getTopColleges = (roundData, isFallback = false) => {
+          const result = [];
+          const unique = new Set();
+
+          for (let item of roundData) {
+            const closing = Number(item.closing_rank);
+            const gap = closing - userRank;
+
+            const matchCondition = isFallback ? relaxedMatch(userRank, closing) : isGoodMatch(userRank, closing);
+
+            if (matchCondition) {
+              if (!unique.has(item.institute)) {
+                unique.add(item.institute);
+                result.push({
+                  ...item,
+                  gap: gap
+                });
               }
+            }
 
-              // STEP 2: ADD SCORE SYSTEM
-              const score = (closing - currentRank) * -1;
-              let roundWeight = 0;
-              if (round === "Round 1") roundWeight = 40;
-              if (round === "Round 2") roundWeight = 30;
-              if (round === "Round 3") roundWeight = 20;
-              if (round === "Round 4") roundWeight = 10;
-              
-              const finalScore = score + roundWeight;
+            if (result.length >= 5) break;
+          }
 
-              // STEP 8: ADD RANK DIFFERENCE
-              const gap = closing - currentRank;
-              const gapText = gap > 0 ? `+${gap.toLocaleString()}` : gap.toLocaleString();
+          return result.slice(0, 5);
+        };
 
-              const opening_str = String(item.opening_rank).replace(/,/g, '');
-              const opening = parseInt(opening_str);
+        // STEP 10 — APPLY FOR ALL ROUNDS
+        let finalResults = {
+          1: getTopColleges(rounds[1]),
+          2: getTopColleges(rounds[2]),
+          3: getTopColleges(rounds[3]),
+          4: getTopColleges(rounds[4])
+        };
 
-              // STEP 3: APPLY SCORING
-              return {
-                institute: item.institute,
-                program: item.program,
-                round,
-                opening_rank: opening,
-                closing_rank: closing,
-                status,
-                chanceColor,
-                score: finalScore,
-                gapText
-              };
-            })
-            .filter(Boolean);
-            
-          results.push(...matches);
-        });
+        // Check if no results were found, then apply relaxed matching
+        const hasAnyResults = Object.values(finalResults).some(res => res.length > 0);
+        if (!hasAnyResults) {
+          finalResults = {
+            1: getTopColleges(rounds[1], true),
+            2: getTopColleges(rounds[2], true),
+            3: getTopColleges(rounds[3], true),
+            4: getTopColleges(rounds[4], true)
+          };
+        }
 
-        // STEP 4 & 5: SMART SORTING & LIMIT RESULTS
-        const finalResults = results
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 5);
+        const actuallyHasResults = Object.values(finalResults).some(res => res.length > 0);
 
-        // STEP 12: EMPTY STATE IMPROVEMENT
-        if (finalResults.length === 0) {
+        if (!actuallyHasResults) {
           setError("No strong matches found. Try increasing your rank range or changing branch.");
         } else {
           setPredictions(finalResults);
@@ -156,31 +175,23 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
       } finally {
         setLoading(false);
       }
-    }, 500); 
+    }, 50); 
   };
 
-  // Utility to get badge and label for UI
-  const getBadgeArgs = (status) => {
-    switch(status) {
-      case 'SAFE': return { text: '🟢 High Chance', color: '#10b981' };
-      case 'TARGET': return { text: '🟡 Good Chance', color: '#f59e0b' };
-      case 'DREAM': return { text: '🔴 Low Chance', color: '#ef4444' };
-      default: return { text: '', color: 'gray' };
-    }
+  // STEP 11 — STATUS TAG (SMART LABEL)
+  const getStatus = (gap) => {
+    if (gap <= 3000) return { text: "Best Choice", color: "#f59e0b", badgeText: "🥇 Best Choice", chanceText: "🟢 Safe Option", chanceColor: "#10b981" }; // Gold
+    if (gap <= 7000) return { text: "Strong Option", color: "#60a5fa", badgeText: "🥈 Strong Option", chanceText: "🟡 Good Chance", chanceColor: "#f59e0b" }; // Blue
+    return { text: "Good Backup", color: "#10b981", badgeText: "🥉 Good Backup", chanceText: "🔴 Low Chance", chanceColor: "#ef4444" }; // Green
   };
 
-  const getTopLabel = (index) => {
-    if (index === 0) return '🥇 Best Choice';
-    if (index === 1) return '🥈 Strong Option';
-    if (index === 2) return '🥉 Good Backup';
-    return null;
-  };
-
-  // STEP 6: GROUP OUTPUT (Derived for grouping mapping in UI)
-  const groupedResults = {
-    SAFE: predictions.filter(p => p.status === 'SAFE'),
-    TARGET: predictions.filter(p => p.status === 'TARGET'),
-    DREAM: predictions.filter(p => p.status === 'DREAM')
+  const getChanceBadge = (gap) => {
+      // Adjusted based on screenshot: gap=36041 -> chance is Best Choice? Wait. 
+      // User says gap <= 3000 BEST, gap <= 7000 GOOD, else SAFE.
+      // We will match the user's logic exactly.
+      if (gap <= 3000) return { text: "Best", color: "#f59e0b" }; // Gold
+      if (gap <= 7000) return { text: "Good", color: "#10b981" }; // Green
+      return { text: "Safe", color: "#60a5fa" }; // Blue
   };
 
   return (
@@ -255,92 +266,87 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
         </div>
       )}
 
-      {predictions.length > 0 && (
+      {/* STEP 12 — UI OUTPUT STRUCTURE */}
+      {predictions && (
         <div style={{ marginTop: '2rem', animation: 'fadeIn 0.5s ease-in-out' }}>
-          <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-            Smart Recommendations ({predictions.length} found)
-          </h3>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {predictions.map((row, i) => {
-              const topLabel = getTopLabel(i);
-              const badge = getBadgeArgs(row.status);
-              const isBest = i === 0;
+          {[1, 2, 3, 4].map(roundNum => {
+            const roundData = predictions[roundNum];
+            if (!roundData || roundData.length === 0) return null;
 
-              return (
-                <div key={i} className={`glass-container hover-scale ${isBest ? 'best-card' : ''}`} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${row.chanceColor}` }}>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {topLabel && (
-                        <span style={{
-                          background: 'rgba(255,255,255,0.15)',
-                          color: 'var(--text-primary)',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: '600'
-                        }} >
-                          {topLabel}
-                        </span>
-                      )}
-                      <span style={{
-                        background: `${badge.color}20`,
-                        color: badge.color,
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        border: `1px solid ${badge.color}40`,
-                        boxShadow: `0 0 10px ${badge.color}20`
-                      }}>
-                        {badge.text}
-                      </span>
-                    </div>
-                    
-                    <span style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      padding: '4px 10px',
-                      borderRadius: '4px',
-                      fontSize: '0.8rem',
-                      color: 'var(--text-secondary)'
-                    }}>
-                      {row.round}
-                    </span>
-                  </div>
+            return (
+              <div key={`round-${roundNum}`} style={{ marginBottom: '3rem' }}>
+                <h3 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                  👉 Round {roundNum} Recommendations
+                </h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                  {roundData.map((row, i) => {
+                    const chanceInfo = getChanceBadge(row.gap);
+                    const gapText = row.gap > 0 ? `+${row.gap.toLocaleString()}` : row.gap.toLocaleString();
 
-                  <div>
-                    <h4 style={{ color: 'var(--text-primary)', margin: '0.5rem 0', fontSize: '1.15rem', lineHeight: '1.4' }}>{row.institute}</h4>
-                    <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>{row.program}</p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                        Closing Rank
-                      </span>
-                      <strong style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>
-                        {row.closing_rank.toLocaleString()}
-                      </strong>
-                    </div>
-                    
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                        Rank Gap
-                      </span>
-                      <span style={{
-                        color: row.gapText.startsWith('+') ? '#10b981' : '#ef4444',
-                        fontWeight: '600',
-                        fontSize: '0.95rem'
-                      }}>
-                        {row.gapText}
-                      </span>
-                    </div>
-                  </div>
+                    return (
+                      <div key={i} className={'glass-container hover-scale'} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: `4px solid ${chanceInfo.color}` }}>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{
+                              background: 'rgba(255,255,255,0.15)',
+                              color: 'var(--text-primary)',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: '600'
+                            }} >
+                              🏅 {chanceInfo.text} Choice
+                            </span>
+                          </div>
+                          
+                          <span style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                            color: 'var(--text-secondary)'
+                          }}>
+                            Round {roundNum}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 style={{ color: 'var(--text-primary)', margin: '0.5rem 0', fontSize: '1.15rem', lineHeight: '1.4' }}>{row.institute}</h4>
+                          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>{row.program}</p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                              Closing Rank
+                            </span>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '1.2rem' }}>
+                              {Number(row.closing_rank).toLocaleString()}
+                            </strong>
+                          </div>
+                          
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                              Rank Gap
+                            </span>
+                            <span style={{
+                              color: row.gap >= 0 ? '#10b981' : '#ef4444',
+                              fontWeight: '600',
+                              fontSize: '0.95rem'
+                            }}>
+                              {gapText}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -348,3 +354,4 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
 };
 
 export default RankPredictor;
+
