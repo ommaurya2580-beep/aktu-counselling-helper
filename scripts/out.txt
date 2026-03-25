@@ -1,0 +1,58 @@
+Total Rows: 10804
+
+Headers: [
+  'Sr.No',
+  'Round┬áΓû▓Γû╝',
+  'Institute┬áΓû▓Γû╝',
+  'Program┬áΓû▓Γû╝',
+  'Stream┬áΓû▓Γû╝',
+  'Quota┬áΓû▓Γû╝',
+  'Category┬áΓû▓Γû╝',
+  'Seat Gender┬áΓû▓Γû╝',
+  'Opening Rank┬áΓû▓Γû╝',
+  'Closing Rank┬áΓû▓Γû╝',
+  'Remark┬áΓû▓Γû╝'
+]
+
+First 3 rows:
+[
+  {
+    "Sr.No": 1,
+    "Round┬áΓû▓Γû╝": "Round 1",
+    "Institute┬áΓû▓Γû╝": "GREATER NOIDA INSTITUTE OF TECHNOLOGY,GAUTAM BUDDH NAGAR",
+    "Program┬áΓû▓Γû╝": "Computer Science and Engineering (Artificial Intelligence)",
+    "Stream┬áΓû▓Γû╝": "B.Tech",
+    "Quota┬áΓû▓Γû╝": "Home State",
+    "Category┬áΓû▓Γû╝": "SC",
+    "Seat Gender┬áΓû▓Γû╝": "Both Male and Female Seats",
+    "Opening Rank┬áΓû▓Γû╝": 1297544,
+    "Closing Rank┬áΓû▓Γû╝": 1297544,
+    "Remark┬áΓû▓Γû╝": "Fresh Only"
+  },
+  {
+    "Sr.No": 2,
+    "Round┬áΓû▓Γû╝": "Round 1",
+    "Institute┬áΓû▓Γû╝": "BHARAT RATNA SARDAR VALLABHBHAI PATEL RAJKIYA ENGINEERING COLLEGE, BASTI",
+    "Program┬áΓû▓Γû╝": "Civil Engineering",
+    "Stream┬áΓû▓Γû╝": "B.Tech",
+    "Quota┬áΓû▓Γû╝": "Home State",
+    "Category┬áΓû▓Γû╝": "OPEN(GIRL)",
+    "Seat Gender┬áΓû▓Γû╝": "Female Seats",
+    "Opening Rank┬áΓû▓Γû╝": 360465,
+    "Closing Rank┬áΓû▓Γû╝": 1045039,
+    "Remark┬áΓû▓Γû╝": "Fresh Only"
+  },
+  {
+    "Sr.No": 3,
+    "Round┬áΓû▓Γû╝": "Round 1",
+    "Institute┬áΓû▓Γû╝": "Dr. Rammanohar Lohia Avadh University, Faizabad",
+    "Program┬áΓû▓Γû╝": "Electronics and Communication Engineering",
+    "Stream┬áΓû▓Γû╝": "B.Tech",
+    "Quota┬áΓû▓Γû╝": "Home State",
+    "Category┬áΓû▓Γû╝": "OPEN(GIRL)",
+    "Seat Gender┬áΓû▓Γû╝": "Female Seats",
+    "Opening Rank┬áΓû▓Γû╝": 425166,
+    "Closing Rank┬áΓû▓Γû╝": 541462,
+    "Remark┬áΓû▓Γû╝": "Fresh Only"
+  }
+]

@@ -343,14 +343,14 @@
     "Female Seats"
   ],
   "years": [
-    2024
+    2025
   ],
   "rounds": [
-    1,
-    2,
-    3,
-    4,
-    6,
-    7
+    "Round 1",
+    "Round 2",
+    "Round 3",
+    "Round 4",
+    "Round 6",
+    "Round 7"
   ]
 }

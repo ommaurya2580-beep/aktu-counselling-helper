@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cutoff2025 {
+  id               String  @id @default(cuid())
+  college_name     String
+  branch_name      String
+  category         String
+  quota            String
+  opening_rank     Int
+  max_closing_rank Int
+  round            Int?
+
+  @@index([category, quota])
+  @@index([college_name])
+  // Ensure idempotent imports by making this composite key unique
+  @@unique([college_name, branch_name, category, quota, round])
+}
+
+model PriorityCollege {
+  id   String @id @default(cuid())
+  name String @unique
+}
