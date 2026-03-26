@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getRoundData } from '../utils/cutoffLoader.js';
-import filterOptions from '../data/filterOptions.json';
+// import filterOptions from '../data/filterOptions.json'; // Removed for dynamic fetch
 
 const RankComparison = () => {
   const [selectedColleges, setSelectedColleges] = useState([]);
@@ -13,7 +13,22 @@ const RankComparison = () => {
   const [roundData, setRoundData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterOptions, setFilterOptions] = useState({
+    institutes: [],
+    categories: [],
+    quotas: [],
+    genders: [],
+    rounds: []
+  });
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Fetch filter options once on mount
+  useEffect(() => {
+    fetch('/data/filterOptions.json')
+      .then(res => res.json())
+      .then(data => setFilterOptions(data))
+      .catch(err => console.error('Error loading filter options:', err));
+  }, []);
 
   // Fetch data when round changes
   useEffect(() => {

@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Paths
-const dataDir = path.join(__dirname, '../src/data');
+const dataDir = path.join(__dirname, '../public/data');
 const inputFile = path.join(dataDir, 'all_cutoffs.json');
 const outputFile = path.join(dataDir, 'cutoffs_by_round.json');
 

@@ -6,7 +6,7 @@ import RankPredictor from './components/RankPredictor';
 import CollegeExplorer from './components/CollegeExplorer';
 import CollegeComparison from './pages/CollegeComparison';
 import RankComparison from './pages/RankComparison';
-import filterData from './data/filterOptions.json';
+/* import filterData from './data/filterOptions.json'; */ // Removed in favor of dynamic fetch from /data/filterOptions.json
 import Select from 'react-select';
 
 import { db } from './services/firebase';
@@ -30,11 +30,11 @@ function App() {
   const [error, setError] = useState(null);
   const [warning, setWarning] = useState(null);
   
-  const [uniqueInstitutes] = useState(filterData.institutes || []);
-  const [uniquePrograms] = useState(filterData.programs || []);
-  const [uniqueCategories] = useState(filterData.categories || []);
-  const [uniqueQuotas] = useState(filterData.quotas || []);
-  const [uniqueGenders] = useState(filterData.genders || []);
+  const [uniqueInstitutes, setUniqueInstitutes] = useState([]);
+  const [uniquePrograms, setUniquePrograms] = useState([]);
+  const [uniqueCategories, setUniqueCategories] = useState([]);
+  const [uniqueQuotas, setUniqueQuotas] = useState([]);
+  const [uniqueGenders, setUniqueGenders] = useState([]);
 
   // Filter States
   const [filters, setFilters] = useState(initialFilters);
@@ -170,11 +170,24 @@ function App() {
       try {
         setLoading(true);
 
-        // Load the fixed dataset — cutoffs.min.json now has year="2025" on all records
-        // (run: node fix-dataset-year.js to confirm)
-        const response = await fetch('/cutoffs.min.json');
-        if (!response.ok) throw new Error(`Failed to load dataset (HTTP ${response.status})`);
-        const data = await response.json();
+        // Load filter options and main dataset in parallel
+        const [filterRes, cutoffRes] = await Promise.all([
+          fetch('/data/filterOptions.json'),
+          fetch('/cutoffs.min.json')
+        ]);
+
+        if (!filterRes.ok) throw new Error(`Failed to load filter options (HTTP ${filterRes.status})`);
+        if (!cutoffRes.ok) throw new Error(`Failed to load dataset (HTTP ${cutoffRes.status})`);
+
+        const filterData = await filterRes.json();
+        const data = await cutoffRes.json();
+
+        // Update filter states
+        setUniqueInstitutes(filterData.institutes || []);
+        setUniquePrograms(filterData.programs || []);
+        setUniqueCategories(filterData.categories || []);
+        setUniqueQuotas(filterData.quotas || []);
+        setUniqueGenders(filterData.genders || []);
 
         console.time('[PERF] preprocessing');
 

@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 // Configurations
 const sourceDir = path.join(__dirname, '../src');
-const outputDir = path.join(__dirname, '../src/data');
+const outputDir = path.join(__dirname, '../public/data');
 const outputFile = path.join(outputDir, 'all_cutoffs.json');
 
 // Ensure output directory exists

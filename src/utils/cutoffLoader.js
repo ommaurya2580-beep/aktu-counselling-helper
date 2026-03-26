@@ -1,9 +1,15 @@
 /**
  * Cutoff Data Loader Utility
  * Optimized for O(1) lookups and single-fetch caching.
+ * Production-ready with robust error handling and in-memory caching.
  */
 
-let cutoffData = null;
+// In-memory cache for fetched data
+const cache = {
+    roundCutoffs: null,
+    allCutoffs: null
+};
+
 let loadingPromise = null;
 
 /**
@@ -29,23 +35,42 @@ const getNormalizedKey = (category, quota, branch) => {
 
 /**
  * Loads the round-based optimized cutoff data.
+ * Optimized with in-memory caching and production-safe error handling.
  */
 export const loadRoundCutoffs = async () => {
-    if (cutoffData) return cutoffData;
+    // Return cached data if available
+    if (cache.roundCutoffs) return cache.roundCutoffs;
     
+    // Return existing loading promise to avoid parallel fetches
     if (loadingPromise) return loadingPromise;
 
     loadingPromise = (async () => {
         try {
-            const response = await fetch('/src/data/cutoffs_by_round.json');
-            if (!response.ok) throw new Error('Failed to load cutoff data');
+            console.log('Fetching round cutoffs from production-safe path...');
+            const response = await fetch('/data/cutoffs_by_round.json');
             
-            cutoffData = await response.json();
-            return cutoffData;
+            // Validate response
+            if (!response.ok) {
+                throw new Error(`Failed to load cutoff data: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            // Validate data structure
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid data format received from server');
+            }
+
+            // Cache for future use
+            cache.roundCutoffs = data;
+            return data;
         } catch (error) {
-            console.error('Error loading round cutoffs:', error);
+            console.error('CRITICAL: Error loading round cutoffs:', error.message);
             loadingPromise = null;
-            throw error;
+            // Return empty fallback object to prevent application crash
+            return {}; 
+        } finally {
+            loadingPromise = null;
         }
     })();
 
@@ -56,14 +81,25 @@ export const loadRoundCutoffs = async () => {
  * Returns data for a specific round.
  */
 export const getRoundData = async (round) => {
-    const data = await loadRoundCutoffs();
-    return data[`round_${round}`] || [];
+    try {
+        const data = await loadRoundCutoffs();
+        const roundKey = `round_${round}`;
+        return data[roundKey] || [];
+    } catch (error) {
+        console.error(`Error getting data for round ${round}:`, error);
+        return [];
+    }
 };
 
 /**
  * Returns all available keys (useful for debugging or dynamic filtering).
  */
 export const getAllKeys = async () => {
-    const data = await loadCutoffs();
-    return Object.keys(data);
+    try {
+        const data = await loadRoundCutoffs();
+        return Object.keys(data || {});
+    } catch (error) {
+        console.error('Error getting all keys:', error);
+        return [];
+    }
 };

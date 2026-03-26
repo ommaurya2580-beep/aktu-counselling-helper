@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const inputJsonPath = path.join(__dirname, '..', 'public', 'cutoffs.min.json');
+const inputJsonPath = path.join(__dirname, '..', 'public', 'data', 'all_cutoffs.json');
 
 const filters = {
     institutes: new Set(),
@@ -44,7 +44,7 @@ const output = {
     rounds: Array.from(filters.rounds).sort((a, b) => extractNumber(a) - extractNumber(b))
 };
 
-const outputPath = path.join(__dirname, '..', 'src', 'data', 'filterOptions.json');
+const outputPath = path.join(__dirname, '..', 'public', 'data', 'filterOptions.json');
 fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
 
 console.log("filterOptions.json successfully written with " + output.institutes.length + " institutes!");
