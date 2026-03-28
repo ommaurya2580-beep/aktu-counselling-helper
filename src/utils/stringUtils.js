@@ -1,6 +1,8 @@
 export const normalizeString = (str) => {
     if (!str) return "";
     return String(str)
+        // Strip embedded carriage-returns and newlines first (Excel import artefacts)
+        .replace(/[\r\n]+/g, ' ')
         .toLowerCase()
         // Strip out 'and' (whole word) and '&' to handle cases with or without them
         .replace(/\band\b/g, ' ')

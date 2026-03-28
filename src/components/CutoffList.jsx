@@ -15,7 +15,8 @@ const CutoffList = ({ cutoffs }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 20;
+    const [resultsPerPage, setResultsPerPage] = useState(20);
+    const [maxResults, setMaxResults] = useState(500);
 
     // Search & Filter logic
     const filteredData = useMemo(() => {
@@ -34,9 +35,15 @@ const CutoffList = ({ cutoffs }) => {
         );
     }, [cutoffs, searchTerm]);
 
+    // Apply Limit BEFORE Pagination
+    const limitedResults = useMemo(() => {
+        if (maxResults === "all") return filteredData;
+        return filteredData.slice(0, maxResults);
+    }, [filteredData, maxResults]);
+
     // Sort logic
     const sortedData = useMemo(() => {
-        let sortableItems = [...filteredData];
+        let sortableItems = [...limitedResults];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
                 if (a[sortConfig.key] < b[sortConfig.key]) {
@@ -49,14 +56,14 @@ const CutoffList = ({ cutoffs }) => {
             });
         }
         return sortableItems;
-    }, [filteredData, sortConfig]);
+    }, [limitedResults, sortConfig]);
 
     // Pagination logic
-    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+    const totalPages = Math.ceil(sortedData.length / resultsPerPage);
     const currentData = useMemo(() => {
-        const start = (currentPage - 1) * itemsPerPage;
-        return sortedData.slice(start, start + itemsPerPage);
-    }, [sortedData, currentPage]);
+        const start = (currentPage - 1) * resultsPerPage;
+        return sortedData.slice(start, start + resultsPerPage);
+    }, [sortedData, currentPage, resultsPerPage]);
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -81,20 +88,54 @@ const CutoffList = ({ cutoffs }) => {
 
     return (
         <div className="glass-container table-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
                 <input
                     type="text"
                     placeholder="Search within results (Institute, Program, Category...)"
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                     style={{
-                        padding: '0.75rem 1rem', width: '100%', maxWidth: '400px',
+                        padding: '0.75rem 1rem', width: '100%', maxWidth: '300px',
                         borderRadius: '8px', border: '1px solid var(--glass-border)',
-                        background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none'
+                        background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none',
+                        flex: '1 1 auto'
                     }}
                 />
-                <div style={{ color: 'var(--text-primary)', fontWeight: '600', alignSelf: 'center', fontSize: '1.1rem' }}>
-                    Showing {filteredData.length} cutoff results
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Results per page</label>
+                        <select
+                            value={resultsPerPage}
+                            onChange={(e) => { setResultsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}
+                        >
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Max Results</label>
+                        <select
+                            value={maxResults}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setMaxResults(val === "all" ? "all" : Number(val));
+                                setCurrentPage(1);
+                            }}
+                            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer' }}
+                        >
+                            <option value={500}>500 (Default)</option>
+                            <option value={1000}>1000</option>
+                            <option value={2000}>2000</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                    
+                    <div style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '1.1rem', whiteSpace: 'nowrap', marginLeft: '0.5rem' }}>
+                        Showing {currentData.length} of {limitedResults.length} results
+                    </div>
                 </div>
             </div>
 
@@ -118,7 +159,7 @@ const CutoffList = ({ cutoffs }) => {
                     <tbody>
                         {currentData.length > 0 ? currentData.map((item, index) => (
                             <tr key={item.id || index}>
-                                <td style={{ color: 'var(--text-secondary)' }}>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                                <td style={{ color: 'var(--text-secondary)' }}>{(currentPage - 1) * resultsPerPage + index + 1}</td>
                                 <td>{item.round}</td>
                                 <td style={{ fontWeight: '500', color: 'var(--text-primary)', maxWidth: '250px' }}>{highlightText(item.institute, searchTerm)}</td>
                                 <td style={{ maxWidth: '200px' }}>{highlightText(item.program, searchTerm)}</td>

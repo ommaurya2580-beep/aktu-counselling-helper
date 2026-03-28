@@ -131,10 +131,35 @@ export const predictColleges = async (rank, category, quota, branch, round) => {
     ];
 
     const getPriorityRank = (collegeName) => {
-        const normalized = (collegeName || '').toUpperCase().trim();
-        const index = COLLEGE_PRIORITY.findIndex(p => normalized.includes(p.toUpperCase()));
+        const normalized = (collegeName || '').toUpperCase()
+            .replace(/&/g, 'AND')
+            .replace(/[,.]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Specific overrides for top colleges with highly variable names across rounds
+        if (normalized.includes("G L BAJAJ") && !normalized.includes("MATHURA")) return 9;
+        if (normalized.includes("KIET") || normalized.includes("KRISHNA INST")) return 8;
+        if (normalized.includes("AJAY KUMAR GARG") || normalized.includes("AKG")) return 7;
+        if (normalized.includes("JSS ACADEMY")) return 6;
+        if (normalized.includes("MADAN MOHAN MALAVIYA") || normalized.includes("MMMUT")) return 5;
+        if (normalized.includes("BUNDELKHAND INST") || normalized.includes("BIET")) return 4;
+        if (normalized.includes("KAMLA NEHRU") || normalized.includes("KNIT")) return 3;
+        if (normalized.includes("HARCOURT BUTLER") || normalized.includes("HBTU")) return 2;
+        if (normalized.includes("INSTITUTE OF ENGINEERING AND TECHNOLOGY LUCKNOW") || normalized.includes("IET LUCKNOW")) return 1;
+
+        const index = COLLEGE_PRIORITY.findIndex(p => {
+            // Strip out city names commonly at the end after a comma, and normalize
+            const pNorm = p.split(',')[0].toUpperCase()
+                .replace(/&/g, 'AND')
+                .replace(/[,.]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return normalized.includes(pNorm);
+        });
         return index !== -1 ? index + 1 : 999;
     };
+
 
     // 2. Remove Duplicates (College + Branch), keeping the best possible match
     const uniqueMap = new Map();

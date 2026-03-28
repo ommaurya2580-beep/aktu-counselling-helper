@@ -7,7 +7,7 @@ import {
   normalize
 } from '../utils/comparisonLoader.js';
 
-const RankComparison = () => {
+const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas = [] }) => {
   const [selectedColleges, setSelectedColleges] = useState([]);
   const [selectedRound, setSelectedRound] = useState('Round 1');
   const [filters, setFilters] = useState({
@@ -18,21 +18,24 @@ const RankComparison = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState({
-    institutes: [],
-    categories: [],
-    quotas: [],
-    genders: [],
-    rounds: ['Round 1', 'Round 2', 'Round 3', 'Round 4']
+    institutes: collegeList,
+    categories: uniqueCategories,
+    quotas: uniqueQuotas,
+    genders: ['Both Male and Female Seats', 'Female Seats Only'],
+    rounds: ['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 6', 'Round 7']
   });
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Fetch filter options once on mount
+  // Synchronize internal state if props change
   useEffect(() => {
-    fetch('/data/filterOptions.json')
-      .then(res => res.json())
-      .then(data => setFilterOptions(data))
-      .catch(err => console.error('Error loading filter options:', err));
-  }, []);
+    setFilterOptions(prev => ({
+      ...prev,
+      institutes: collegeList,
+      categories: uniqueCategories,
+      quotas: uniqueQuotas
+    }));
+  }, [collegeList, uniqueCategories, uniqueQuotas]);
+
 
   // Fetch comparison data on mount
   useEffect(() => {
@@ -52,6 +55,14 @@ const RankComparison = () => {
   // Use central normalize utility for robust matching
   const normalizeForSearch = (str) => normalize(str);
 
+  const getAcronym = (text) => {
+      if (!text) return '';
+      const words = text.split(/[^a-zA-Z0-9]+/);
+      return words.filter(w => !['of', 'and', 'the', 'in', 'at', 'for', 'instt', 'engg'].includes(w.toLowerCase()) && w.length > 0)
+                  .map(w => w[0].toLowerCase())
+                  .join('');
+  };
+
   const filteredCollegesList = useMemo(() => {
     if (!searchQuery) return [];
     
@@ -59,9 +70,12 @@ const RankComparison = () => {
     
     return filterOptions.institutes.filter(inst => {
       const normalizedInst = normalizeForSearch(inst);
-      // Try exact includes on raw string OR normalized matching for abbreviations like "G.L. Bajaj" vs "gl bajaj"
+      const acronym = getAcronym(inst);
+      
+      // Try exact includes on raw string OR normalized matching for abbreviations like "G.L. Bajaj" OR acronym match for "IET"
       const isMatch = inst.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                     normalizedInst.includes(normalizedQuery);
+                     normalizedInst.includes(normalizedQuery) ||
+                     acronym.includes(normalizedQuery);
                      
       return isMatch && !selectedColleges.includes(inst);
     }).slice(0, 10);

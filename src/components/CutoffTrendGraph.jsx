@@ -244,7 +244,7 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
         pointRadius: 6,
         pointBackgroundColor: '#3b82f6',
         pointHoverRadius: 8,
-        spanGaps: false
+        spanGaps: true
       }
     ];
 
@@ -260,7 +260,7 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
           pointRadius: 6,
           pointBackgroundColor: '#a855f7',
           pointHoverRadius: 8,
-          spanGaps: false
+          spanGaps: true
         });
      }
     }
