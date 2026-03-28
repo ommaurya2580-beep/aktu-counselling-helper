@@ -1,6 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { getRoundData } from '../utils/cutoffLoader.js';
-// import filterOptions from '../data/filterOptions.json'; // Removed for dynamic fetch
+import { 
+  loadComparisonData, 
+  compareFast, 
+  compareBranches, 
+  findWinner,
+  normalize
+} from '../utils/comparisonLoader.js';
 
 const RankComparison = () => {
   const [selectedColleges, setSelectedColleges] = useState([]);
@@ -10,7 +15,6 @@ const RankComparison = () => {
     quota: 'Home State',
     gender: 'Both Male and Female Seats'
   });
-  const [roundData, setRoundData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState({
@@ -18,7 +22,7 @@ const RankComparison = () => {
     categories: [],
     quotas: [],
     genders: [],
-    rounds: []
+    rounds: ['Round 1', 'Round 2', 'Round 3', 'Round 4']
   });
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -30,28 +34,23 @@ const RankComparison = () => {
       .catch(err => console.error('Error loading filter options:', err));
   }, []);
 
-  // Fetch data when round changes
+  // Fetch comparison data on mount
   useEffect(() => {
-    const loadData = async () => {
+    const initData = async () => {
       setLoading(true);
       try {
-        const roundNum = selectedRound.replace('Round ', '');
-        const data = await getRoundData(roundNum);
-        setRoundData(data || []);
+        await loadComparisonData();
       } catch (error) {
-        console.error('Error loading round data:', error);
+        console.error('Error initializing comparison data:', error);
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, [selectedRound]);
+    initData();
+  }, []);
 
-  // Utility to normalize strings for robust matching (removes punctuation, dots, and extra spaces)
-  const normalizeForSearch = (str) => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-  };
+  // Use central normalize utility for robust matching
+  const normalizeForSearch = (str) => normalize(str);
 
   const filteredCollegesList = useMemo(() => {
     if (!searchQuery) return [];
@@ -80,121 +79,96 @@ const RankComparison = () => {
     setSelectedColleges(selectedColleges.filter(c => c !== college));
   };
 
-  const comparisonData = useMemo(() => {
-    if (selectedColleges.length === 0 || roundData.length === 0) return [];
-
-    // 1. Pre-process Round Data to build a lookup map
-    const branchMap = {};
-    
-    // Normalization keys
-    const targetCategory = normalizeForSearch(filters.category);
-    const targetQuota = normalizeForSearch(filters.quota);
-    const isFemaleOnly = filters.gender === 'Female Seats Only';
-    
-    // Pre-normalize selected college names for comparison
-    const normalizedSelectedColleges = selectedColleges.map(c => normalizeForSearch(c));
-
-    roundData.forEach(item => {
-      const itemCollegeNormalized = normalizeForSearch(item.college_name);
-      
-      // Find which selected college this item belongs to
-      const collegeIdx = normalizedSelectedColleges.indexOf(itemCollegeNormalized);
-      if (collegeIdx === -1) return;
-      
-      const collegeName = selectedColleges[collegeIdx];
-      const itemCategory = normalizeForSearch(item.category);
-      const itemQuota = normalizeForSearch(item.quota);
-      
-      // Category Match Logic
-      // 1. Strict match
-      // 2. Contains (e.g., OPEN matches OPEN(TF))
-      // 3. Gender specific (e.g., matches (GL) if female selected)
-      let catScore = 0;
-      if (itemCategory === targetCategory) catScore = 10;
-      else if (itemCategory.includes(targetCategory)) catScore = 5;
-      else if (targetCategory === 'open' && itemCategory.startsWith('open')) catScore = 3;
-      
-      // Gender filtering: if female only, filter for categories with 'GL' or 'GIRL'
-      if (isFemaleOnly) {
-          if (!item.category.includes('GL') && !item.category.includes('GIRL')) {
-              catScore = 0; // Disqualify if not female seat
-          } else {
-              catScore += 2; // Boost if female seat
-          }
-      }
-
-      const quotaMatch = itemQuota === targetQuota || itemQuota.includes(targetQuota);
-      
-      if (catScore > 0 && quotaMatch) {
-          if (!branchMap[item.branch]) branchMap[item.branch] = {};
-          
-          // Only keep the best category match for each college+branch
-          // Using collegeName (from selectedColleges) as key for consistency
-          const currentMatch = branchMap[item.branch][collegeName];
-          if (!currentMatch || catScore > currentMatch.score || (catScore === currentMatch.score && item.closing_rank < currentMatch.closing_rank)) {
-              branchMap[item.branch][collegeName] = {
-                  ...item,
-                  score: catScore
-              };
-          }
-      }
-    });
-
-    // Fallback logic: If a college has data for a branch but NOT in the specific category, try 'OPEN'
-    if (targetCategory !== 'open') {
-        roundData.forEach(item => {
-            const itemCollegeNormalized = normalizeForSearch(item.college_name);
-            const collegeIdx = normalizedSelectedColleges.indexOf(itemCollegeNormalized);
-            if (collegeIdx === -1) return;
-            
-            const collegeName = selectedColleges[collegeIdx];
-            const itemCategory = normalizeForSearch(item.category);
-            const itemQuota = normalizeForSearch(item.quota);
-            
-            if (itemCategory === 'open' && (itemQuota === targetQuota || itemQuota.includes(targetQuota))) {
-                if (!branchMap[item.branch]) return; // Only fallback for branches already found in other colleges
-                if (!branchMap[item.branch][collegeName]) {
-                    branchMap[item.branch][collegeName] = { ...item, score: 1, isFallback: true };
-                }
-            }
-        });
-    }
-
-    // Transform map to displayable array
-    return Object.keys(branchMap).map(branchName => {
-      const branchColleges = selectedColleges.map(collegeName => {
-        const match = branchMap[branchName][collegeName];
-        return {
-          name: collegeName,
-          opening_rank: match?.opening_rank || 'N/A',
-          closing_rank: match?.closing_rank || 'N/A',
-          category: match?.category, // Show which category matched for clarity
-          exists: !!match,
-          isFallback: match?.isFallback
-        };
-      });
-
-      // Find winner for this branch (lowest closing rank among valid matches)
-      let winner = null;
-      let minClosing = Infinity;
-
-      branchColleges.forEach(bc => {
-        if (bc.exists && bc.closing_rank !== 'N/A' && !bc.isFallback) {
-          const rank = Number(bc.closing_rank);
-          if (rank < minClosing) {
-            minClosing = rank;
-            winner = bc.name;
-          }
+  // Handle async updates for comparison results
+  const [comparisonResults, setComparisonResults] = useState([]);
+  
+  useEffect(() => {
+    const updateResults = async () => {
+        if (selectedColleges.length === 0) {
+            setComparisonResults([]);
+            return;
         }
-      });
+        
+        setLoading(true);
+        try {
+            const data = await loadComparisonData();
+            if (!data) return;
 
-      return {
-        branch: branchName,
-        colleges: branchColleges,
-        winner
-      };
-    }).sort((a, b) => a.branch.localeCompare(b.branch));
-  }, [selectedColleges, roundData, filters]);
+            const roundNum = selectedRound.replace('Round ', '');
+            
+            // 1. Get raw college data using fast lookup (O(1) + partial match)
+            // Using findCollege under the hood in comparisonLoader.js
+            const rawCollegeData = compareFast(data, selectedColleges, roundNum);
+
+            const filteredCollegeData = {};
+            const targetCategory = normalizeForSearch(filters.category);
+            const targetQuota = normalizeForSearch(filters.quota);
+            const isFemaleOnly = filters.gender === 'Female Seats Only';
+
+            Object.entries(rawCollegeData).forEach(([collegeName, branches]) => {
+                filteredCollegeData[collegeName] = (branches || []).filter(item => {
+                    const itemCategory = normalizeForSearch(item.category);
+                    const itemQuota = normalizeForSearch(item.quota);
+                    
+                    let isCategoryMatch = itemCategory === targetCategory || itemCategory.includes(targetCategory);
+                    if (targetCategory === 'open' && itemCategory.startsWith('open')) isCategoryMatch = true;
+
+                    if (isFemaleOnly) {
+                        if (!item.category.includes('GL') && !item.category.includes('GIRL')) {
+                            isCategoryMatch = false;
+                        }
+                    }
+
+                    const isQuotaMatch = itemQuota === targetQuota || itemQuota.includes(targetQuota);
+                    
+                    return isCategoryMatch && isQuotaMatch;
+                });
+
+                // Fallback to OPEN if no results for specific category
+                if (filteredCollegeData[collegeName].length === 0 && targetCategory !== 'open') {
+                    filteredCollegeData[collegeName] = (branches || []).filter(item => {
+                        const itemCategory = normalizeForSearch(item.category);
+                        const itemQuota = normalizeForSearch(item.quota);
+                        return itemCategory === 'open' && (itemQuota === targetQuota || itemQuota.includes(targetQuota));
+                    }).map(item => ({ ...item, isFallback: true }));
+                }
+            });
+
+            // 2. Group by branch using specialized utility
+            const branchMap = compareBranches(filteredCollegeData);
+
+            // 3. Transform to displayable format
+            const transformed = Object.entries(branchMap).map(([branchName, colleges]) => {
+                const rowColleges = selectedColleges.map(name => {
+                    const match = colleges.find(c => c.college === name);
+                    return {
+                        name,
+                        opening_rank: match?.opening_rank || 'N/A',
+                        closing_rank: match?.closing || 'N/A',
+                        category: match?.category || (match?.isFallback ? 'OPEN (FB)' : ''),
+                        exists: !!match,
+                        isFallback: match?.isFallback
+                    };
+                });
+
+                const winnerObj = findWinner(colleges);
+
+                return {
+                    branch: branchName,
+                    colleges: rowColleges,
+                    winner: winnerObj?.college
+                };
+            }).sort((a, b) => a.branch.localeCompare(b.branch));
+
+            setComparisonResults(transformed);
+        } catch (error) {
+            console.error("Error updating comparison results:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    updateResults();
+  }, [selectedColleges, selectedRound, filters]);
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-300 font-['Outfit'] pb-20">
@@ -338,7 +312,7 @@ const RankComparison = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {comparisonData.length > 0 ? comparisonData.map((row) => (
+                {comparisonResults.length > 0 ? comparisonResults.map((row) => (
                   <tr key={row.branch} className="hover:bg-white/[0.02] transition-all group">
                     <td className="px-10 py-8">
                       <div className="text-white font-black text-sm tracking-tight group-hover:text-blue-400 transition-colors uppercase leading-tight max-w-[200px]">

@@ -1,0 +1,166 @@
+
+--- aktu_round1.xlsx ---
+Row 0: [
+  'Round ▲▼',
+  'Institute ▲▼',
+  'Program ▲▼',
+  'Stream ▲▼',
+  'Quota ▲▼',
+  'Category ▲▼',
+  'Seat Gender ▲▼',
+  'Opening Rank ▲▼',
+  'Closing Rank ▲▼',
+  'Remark ▲▼'
+]
+Row 1: [
+  'Round 1',
+  'A.N.A.COLLEGE OF ENGINEERING & MANAGEMENT,BAREILLY',
+  'Information Technology',
+  'B.Tech',
+  'Home State',
+  'OPEN',
+  'Both Male and Female Seats',
+  745436,
+  745436,
+  'Fresh Only'
+]
+
+--- aktu_round2.xlsx ---
+Row 0: [
+  3854,
+  'Round 2',
+  'MEERUT INSTITUTE OF ENGINEERING & TECHNOLOGY,MEERUT',
+  'Computer Science',
+  'B.Tech',
+  'Home State',
+  'OPEN',
+  'Both Male and Female Seats',
+  1069010,
+  1209425,
+  'Fresh and Upgraded Only'
+]
+Row 1: [
+  3855,
+  'Round 2',
+  'MEERUT INSTITUTE OF ENGINEERING & TECHNOLOGY,MEERUT',
+  'Computer Science (FW)',
+  'B.Tech',
+  'Home State',
+  'OPEN(TF)',
+  'Both Male and Female Seats',
+  231821,
+  231821,
+  'Fresh and Upgraded Only'
+]
+
+--- aktu_round3.xlsx ---
+Row 0: [
+  6444,
+  'Round 3',
+  'ABES ENGG.COLLEGE,GHAZIABAD',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'Home State',
+  'SC(Girl)',
+  'Female Seats',
+  608963,
+  1124354,
+  'Fresh and Upgraded Only'
+]
+Row 1: [
+  6457,
+  'Round 3',
+  'ABES ENGG.COLLEGE,GHAZIABAD',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'Home State',
+  'BC(AF)',
+  'Both Male and Female Seats',
+  1134102,
+  1134102,
+  'Fresh and Upgraded Only'
+]
+
+--- aktu_round4.xlsx ---
+Row 0: [
+  8119,
+  'Round 4',
+  'ABES ENGG.COLLEGE,GHAZIABAD',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'Home State',
+  'EWS(OPEN)',
+  'Both Male and Female Seats',
+  534716,
+  570356,
+  'Fresh and Upgraded Only'
+]
+Row 1: [
+  8120,
+  'Round 4',
+  'ABES ENGG.COLLEGE,GHAZIABAD',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'Home State',
+  'OPEN(AF)',
+  'Both Male and Female Seats',
+  666061,
+  688976,
+  'Fresh and Upgraded Only'
+]
+
+--- aktu_round6.xlsx ---
+Row 0: [
+  9456,
+  'Round 6',
+  'A.N.A.COLLEGE OF ENGINEERING & MANAGEMENT,BAREILLY',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'All India',
+  'OPEN',
+  'Both Male and Female Seats',
+  1750083,
+  2019178,
+  'Fresh Only'
+]
+Row 1: [
+  9107,
+  'Round 6',
+  'ABES ENGG.COLLEGE,GHAZIABAD',
+  'Mechanical Engineering',
+  'B.Tech',
+  'All India',
+  'OPEN',
+  'Both Male and Female Seats',
+  605568,
+  2016462,
+  'Fresh Only'
+]
+
+--- aktu_round7.xlsx ---
+Row 0: [
+  10078,
+  'Round 7',
+  'A.N.A.COLLEGE OF ENGINEERING & MANAGEMENT,BAREILLY',
+  'Civil Engineering',
+  'B.Tech',
+  'All India',
+  'OPEN',
+  'Both Male and Female Seats',
+  2112756,
+  2112756,
+  'Fresh Only'
+]
+Row 1: [
+  10799,
+  'Round 7',
+  'A.N.A.COLLEGE OF ENGINEERING & MANAGEMENT,BAREILLY',
+  'Computer Science and Engineering',
+  'B.Tech',
+  'All India',
+  'OPEN',
+  'Both Male and Female Seats',
+  2101391,
+  2120841,
+  'Fresh Only'
+]

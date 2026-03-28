@@ -28,27 +28,42 @@ function processRound(filePath) {
     const workbook = XLSX.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet);
+    // using header: 1 to get arrays instead of objects, to handle files without headers
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     const collegeMap = {};
 
     data.forEach(row => {
-        // Handle headers with special characters by finding the keys that contain the target string
-        const keys = Object.keys(row);
-        const instKey = keys.find(k => k.includes('Institute'));
-        const progKey = keys.find(k => k.includes('Program'));
-        const streamKey = keys.find(k => k.includes('Stream'));
-        const openKey = keys.find(k => k.includes('Opening Rank'));
-        const closeKey = keys.find(k => k.includes('Closing Rank'));
+        if (!row || row.length < 8) return;
+        
+        let offset = 0;
+        // Check if the first column is a Serial Number
+        if (typeof row[0] === 'number' || (typeof row[0] === 'string' && /^\d+$/.test(row[0]))) {
+            offset = 1;
+        } else if (typeof row[0] === 'string' && row[0].includes('Round')) {
+            // Verify if it's a header row
+            if (row[1] && row[1].includes('Institute')) {
+                return; // Skip header
+            }
+            offset = 0;
+        } else {
+            return; // invalid row
+        }
 
-        const instituteName = normalize(row[instKey]);
-        const program = row[progKey] || '';
-        const stream = row[streamKey] || '';
+        const rawInst = row[1 + offset];
+        if (!rawInst || typeof rawInst !== 'string') return;
+        
+        const instituteName = normalize(rawInst);
+        const program = row[2 + offset] || '';
+        const stream = row[3 + offset] || '';
         const branch = `${program} ${stream}`.trim();
-        const openingRank = parseInt(row[openKey]) || null;
-        const closingRank = parseInt(row[closeKey]) || null;
+        const quota = row[4 + offset] || '';
+        const category = row[5 + offset] || '';
+        const gender = row[6 + offset] || '';
+        const openingRank = parseInt(row[7 + offset]) || null;
+        const closingRank = parseInt(row[8 + offset]) || null;
 
-        if (!instituteName) return;
+        if (!instituteName || !category) return;
 
         if (!collegeMap[instituteName]) {
             collegeMap[instituteName] = [];
@@ -56,6 +71,9 @@ function processRound(filePath) {
 
         collegeMap[instituteName].push({
             branch,
+            quota,
+            category,
+            gender,
             opening_rank: openingRank,
             closing_rank: closingRank
         });

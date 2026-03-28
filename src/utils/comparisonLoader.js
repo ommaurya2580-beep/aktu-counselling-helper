@@ -5,7 +5,7 @@
 let comparisonData = null;
 let loadingPromise = null;
 
-function normalize(str) {
+export function normalize(str) {
     if (!str) return '';
     return str
         .toString()
@@ -186,17 +186,22 @@ export function compareBranches(collegeData) {
             branchMap[normalizedBranch].push({
                 college,
                 closing: b.closing_rank,
+                opening_rank: b.opening_rank,
+                category: b.category,
                 originalBranch: b.branch // Keep original name for display
             });
         });
     });
 
-    // Filter only common branches (present in at least 2 colleges)
-    Object.keys(branchMap).forEach(branch => {
-        if (branchMap[branch].length < 2) {
-            delete branchMap[branch];
-        }
-    });
+    // Filter only common branches if more than 1 college is selected
+    const numColleges = Object.keys(collegeData).length;
+    if (numColleges > 1) {
+        Object.keys(branchMap).forEach(branch => {
+            if (branchMap[branch].length < 2) {
+                delete branchMap[branch];
+            }
+        });
+    }
 
     return branchMap;
 }
