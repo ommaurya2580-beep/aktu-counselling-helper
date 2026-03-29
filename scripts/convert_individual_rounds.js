@@ -122,7 +122,7 @@ files.forEach(fileInfo => {
         const getVal = (idx) => (idx !== undefined && idx !== -1 && row[idx] !== undefined) ? row[idx].toString().trim() : '';
         
         const institute = getVal(colMap.institute);
-        if (!institute || institute.toUpperCase().includes('INSTITUTE')) return;
+        if (!institute || institute.trim().toUpperCase() === 'INSTITUTE') return;
 
         results.push({
             round: colMap.round !== -1 ? getVal(colMap.round) : fileInfo.roundName,

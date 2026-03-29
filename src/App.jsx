@@ -19,8 +19,9 @@ import round4 from "./data/aktu_round4.json";
 import round6 from "./data/aktu_round6.json";
 import round7 from "./data/aktu_round7.json";
 import cutoffsFull from "./data/cutoffs.json";
+import cutoffsMin from "./data/cutoffs.min.json";
 
-const allDataCombined = [...round1, ...round2, ...round3, ...round4, ...round6, ...round7, ...cutoffsFull];
+const allDataCombined = [...round1, ...round2, ...round3, ...round4, ...round6, ...round7, ...cutoffsFull, ...cutoffsMin];
 const normalizeInstitute = (str) => (str || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
 
 const collegeList = Array.from(

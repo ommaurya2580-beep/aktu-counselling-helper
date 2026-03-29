@@ -146,7 +146,7 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
         const compareMap = bestRank(groupByRound(compareData));
 
         // STEP 10 — Align Rounds Properly
-        const rounds = ["1", "2", "3", "4"];
+        const rounds = ["1", "2", "3", "4", "6", "7"];
 
         const graphData = rounds.map(r => {
           const pData = primaryMap[r] ?? null;
@@ -191,22 +191,26 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
   };
 
   const renderTrend = (isPrimary) => {
-    const r1 = chartData.find(d => d.round === "Round 1");
-    // fallback if R4 doesn't exist to R3 or R2
-    const rLast = chartData.find(d => d.round === "Round 4") || chartData.find(d => d.round === "Round 3") || chartData.find(d => d.round === "Round 2");
-    if (!r1 || !rLast) return null;
+    const validRounds = chartData.filter(d => {
+        const val = isPrimary ? (metric === 'closing' ? d.primary_closing : d.primary_opening) : (metric === 'closing' ? d.compare_closing : d.compare_opening);
+        return val !== null;
+    });
+    
+    if (validRounds.length < 2) return null;
+    
+    const r1 = validRounds[0];
+    const rLast = validRounds[validRounds.length - 1];
     
     const val1 = isPrimary ? (metric === 'closing' ? r1.primary_closing : r1.primary_opening) : (metric === 'closing' ? r1.compare_closing : r1.compare_opening);
     const valLast = isPrimary ? (metric === 'closing' ? rLast.primary_closing : rLast.primary_opening) : (metric === 'closing' ? rLast.compare_closing : rLast.compare_opening);
     
-    if (!val1 || !valLast) return null;
+    if (!val1 || !valLast || val1 === valLast) return <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Stable ⚖️</div>;
     
     if (valLast > val1) {
         return <div style={{ color: '#4ade80', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Increasing 📈</div>;
-    } else if (valLast < val1) {
+    } else {
         return <div style={{ color: '#f87171', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Decreasing 📉</div>;
     }
-    return <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 'bold' }}>Demand Stable ⚖️</div>;
   };
 
   const renderGapAnalysisInner = () => {
