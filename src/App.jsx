@@ -441,7 +441,7 @@ function App() {
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Applying filters...</p>
           </div>
         ) : activeTab === 'search' ? (
-            <CutoffList cutoffs={filteredCutoffs} />
+            <CutoffList cutoffs={filteredCutoffs} appliedFilters={appliedFilters} />
         ) : null}
           </>
         )}

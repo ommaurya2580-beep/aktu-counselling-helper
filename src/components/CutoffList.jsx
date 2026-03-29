@@ -11,7 +11,7 @@ const highlightText = (text, highlight) => {
     );
 };
 
-const CutoffList = ({ cutoffs }) => {
+const CutoffList = ({ cutoffs, appliedFilters }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
@@ -79,9 +79,14 @@ const CutoffList = ({ cutoffs }) => {
     };
 
     if (!cutoffs || cutoffs.length === 0) {
+        let message = "No cutoff data found for the selected filters.";
+        if (appliedFilters && appliedFilters.institute !== 'all' && appliedFilters.program !== 'all') {
+            message = "This branch is not available or offered by this college.";
+        }
+        
         return (
             <div className="glass-container" style={{ textAlign: 'center', padding: '3rem' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>No cutoff data found for the selected filters.</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>{message}</p>
             </div>
         );
     }
