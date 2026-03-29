@@ -17,11 +17,14 @@ export const predictColleges = async (rank, category, quota, branch, round) => {
     let isRelaxed = false;
     let searchStage = 'STRICT'; // STRICT, BRANCH_RELAXED, ROUND_RELAXED, CATEGORY_RELAXED
 
+    // Helper to check for quality matches (High or Medium chance)
+    const hasQualityMatches = (res) => res.some(r => r.chance === 'HIGH' || r.chance === 'MEDIUM');
+
     // Step 1: Strict Match
     results = await performSearch(rank, category, quota, branch, round);
-
-    // Step 2: Relax Branch
-    if (results.length === 0) {
+    
+    // Step 2: Relax Branch (Trigger if no HIGH/MEDIUM matches)
+    if (!hasQualityMatches(results)) {
         isRelaxed = true;
         searchStage = 'BRANCH_RELAXED';
         const similarBranches = BRANCH_RELAXATION[branch.toUpperCase()] || [];
@@ -31,21 +34,21 @@ export const predictColleges = async (rank, category, quota, branch, round) => {
         }
     }
 
-    // Step 3: Relax Round (Check all rounds)
-    if (results.length === 0) {
+    // Step 3: Relax Round (Trigger if still no HIGH/MEDIUM matches)
+    if (!hasQualityMatches(results)) {
         isRelaxed = true;
         searchStage = 'ROUND_RELAXED';
         for (const r of ROUND_SEQUENCE) {
             if (r === Number(round)) continue;
             const res = await performSearch(rank, category, quota, branch, r);
-            if (res.length > 0) {
+            if (hasQualityMatches(res)) {
                 results = [...results, ...res];
-                break; // Stop at first round that gives results
+                // we keep going to aggregate all rounds' good matches
             }
         }
     }
 
-    // Step 4: Relax Category (Push to OPEN)
+    // Step 4: Relax Category (Trigger if still no results)
     if (results.length === 0 && category.toUpperCase() !== 'OPEN') {
         isRelaxed = true;
         searchStage = 'CATEGORY_RELAXED';
@@ -69,7 +72,7 @@ export const predictColleges = async (rank, category, quota, branch, round) => {
                 proximity: Math.abs(Number(college.closing_rank) - rank)
             }))
             .sort((a, b) => a.proximity - b.proximity)
-            .slice(0, 10);
+            .slice(0, 15); // Increased to 15
     }
 
     // --- Finalize Prediction Output Flow ---

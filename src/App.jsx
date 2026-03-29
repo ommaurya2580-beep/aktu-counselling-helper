@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { normalizeString } from './utils/stringUtils'; // [PERF] top-level import — used at load time for pre-normalization
+import { normalizeString } from './utils/stringUtils'; 
 import CutoffList from './components/CutoffList';
 import CutoffTrendGraph from './components/CutoffTrendGraph';
 import RankPredictor from './components/RankPredictor';
 import CollegeComparison from './pages/CollegeComparison';
 import RankComparison from './pages/RankComparison';
-/* import filterData from './data/filterOptions.json'; */ // Removed in favor of dynamic fetch from /data/filterOptions.json
 import Select from 'react-select';
 
 import { db } from './services/firebase';
@@ -46,9 +45,6 @@ const quotaList = Array.from(
   new Set(allDataCombined.map(item => item.quota || ""))
 ).filter(Boolean).sort();
 
-console.log("Total Colleges:", collegeList.length);
-
-// Data loading handled via fetch in useEffect
 const initialFilters = {
   year: 'all',
   round: 'all',
@@ -60,8 +56,8 @@ const initialFilters = {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState('search'); // 'search', 'analytics', 'predictor', 'colleges'
-  const [allCutoffs, setAllCutoffs] = useState([]); // Stores all 10k records from JSON
+  const [activeTab, setActiveTab] = useState('search'); 
+  const [allCutoffs, setAllCutoffs] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState(null);
@@ -73,7 +69,6 @@ function App() {
   const [uniqueQuotas, setUniqueQuotas] = useState(quotaList);
   const [uniqueGenders, setUniqueGenders] = useState(['Male Only', 'Female Only', 'Both Male and Female Seats']);
 
-  // Filter States
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
 
@@ -83,9 +78,6 @@ function App() {
   }, []);
 
   const [filteredCutoffs, setFilteredCutoffs] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const executeSearch = React.useCallback(() => {
     if (allCutoffs.length === 0) return;
@@ -98,16 +90,9 @@ function App() {
     const selectedBranch = appliedFilters.program !== 'all' ? normalize(appliedFilters.program) : null;
 
     let filteredResults = allCutoffs.filter(item => {
-      // Round filter
       const matchRound = appliedFilters.round === 'all' || appliedFilters.round === 'All Rounds' || item.round === appliedFilters.round || `Round ${item.round}` === appliedFilters.round;
-
-      // College search
       const matchCollege = !selectedCollege || normalizeInstitute(item.institute).includes(normalizeInstitute(selectedCollege));
-      
-      // Branch/Program search
       const matchBranch = !selectedBranch || normalize(item.program).includes(selectedBranch);
-      
-      // Category, Quota, Gender
       const matchCategory = appliedFilters.category === 'all' || appliedFilters.category === 'All Categories' || item.category === appliedFilters.category;
       const matchQuota = appliedFilters.quota === 'all' || appliedFilters.quota === 'All Quotas' || item.quota === appliedFilters.quota;
       const matchGender = appliedFilters.gender === 'all' || appliedFilters.gender === 'All Genders' || item.gender === appliedFilters.gender;
@@ -115,28 +100,15 @@ function App() {
       return matchRound && matchCollege && matchBranch && matchCategory && matchQuota && matchGender;
     });
 
-    // Sort by closing_rank ascending
     filteredResults.sort((a, b) => (parseInt(a.closing_rank) || 999999) - (parseInt(b.closing_rank) || 999999));
 
     setFilteredCutoffs(filteredResults);
     setIsSearching(false);
   }, [appliedFilters, allCutoffs]);
 
-  // Execute search automatically when filters or data change (Live Search)
   useEffect(() => {
     executeSearch();
   }, [executeSearch]);
-
-
-  const handleSearch = React.useCallback(() => {
-    executeSearch(false);
-  }, [executeSearch]);
-
-  const handleLoadMore = React.useCallback(() => {
-    if (hasMore && !isLoadingMore) {
-      executeSearch(true);
-    }
-  }, [hasMore, isLoadingMore, executeSearch]);
 
   const handleResetFilters = React.useCallback(() => {
     setFilters(initialFilters);
@@ -145,7 +117,6 @@ function App() {
     setError(null);
   }, []);
 
-  // Fetch filter options once on mount
   useEffect(() => {
     let isMounted = true;
     const loadFilterData = async () => {
@@ -154,17 +125,12 @@ function App() {
         const res = await fetch('/data/filterOptions.json');
         if (!res.ok) throw new Error(`Failed to load filter options`);
         const filterData = await res.json();
-
         if (isMounted) {
-          // Keep fetch for backward compatibility if needed, but primary source is now dynamic
           if (filterData.genders) setUniqueGenders(filterData.genders);
           setLoading(false);
-          
-          // Initial search
           executeSearch();
         }
       } catch (err) {
-        console.error("Error loading filter data:", err);
         if (isMounted) {
           setError("Failed to load filter options.");
           setLoading(false);
@@ -174,20 +140,13 @@ function App() {
 
     const loadCutoffData = () => {
       try {
-        // Merge and deduplicate using the already imported allDataCombined
         const mergedMap = new Map();
-        
         allDataCombined.forEach(item => {
           const inst = (item.institute || item.college_name || "").toUpperCase();
           const prog = (item.program || item.branch || "").toUpperCase();
           const key = `${item.round}-${inst}-${prog}-${item.category}-${item.quota}-${item.gender}-${item.closing_rank}`;
-          mergedMap.set(key, {
-            ...item,
-            institute: inst,
-            program: prog
-          });
+          mergedMap.set(key, { ...item, institute: inst, program: prog });
         });
-
         if (isMounted) {
           setAllCutoffs(Array.from(mergedMap.values()));
         }
@@ -198,286 +157,361 @@ function App() {
 
     loadFilterData();
     loadCutoffData();
-
     return () => { isMounted = false; };
   }, []);
 
-  // STEP 10 — PERFORMANCE OPTIMIZATION (useMemo)
-  const roundOptions = useMemo(() => {
-    return ["All Rounds", "Round 1", "Round 2", "Round 3", "Round 4", "Round 6", "Round 7"];
-  }, []);
+  const roundOptions = useMemo(() => ["All Rounds", "Round 1", "Round 2", "Round 3", "Round 4", "Round 6", "Round 7"], []);
 
-  const instituteOptions = useMemo(() => {
-    return [
-      { label: "All Institutes", value: "all" },
-      ...collegeList.map(inst => ({ 
-        label: inst.replace(/[\r\n]+/g, ' ').trim(), 
-        value: inst 
-      }))
-    ];
-  }, []);
+  const instituteOptions = useMemo(() => [
+    { label: "All Institutes", value: "all" },
+    ...collegeList.map(inst => ({ label: inst.replace(/[\r\n]+/g, ' ').trim(), value: inst }))
+  ], []);
 
-  const programOptions = useMemo(() => {
-    return [
-      { label: "All Programs", value: "all" },
-      ...uniquePrograms.map(prog => ({ 
-        label: prog.replace(/[\r\n]+/g, ' ').trim(), 
-        value: prog 
-      }))
-    ];
-  }, [uniquePrograms]);
+  const programOptions = useMemo(() => [
+    { label: "All Programs", value: "all" },
+    ...uniquePrograms.map(prog => ({ label: prog.replace(/[\r\n]+/g, ' ').trim(), value: prog }))
+  ], [uniquePrograms]);
 
-  // Auto-reset invalid branch if it becomes unavailable under new filters
   useEffect(() => {
     if (filters.program && filters.program !== 'all') {
       const isValid = programOptions.some(opt => opt.value === filters.program);
-      if (!isValid) {
-        setFilters(prev => ({ ...prev, program: 'all' }));
-      }
+      if (!isValid) setFilters(prev => ({ ...prev, program: 'all' }));
     }
   }, [programOptions, filters.program]);
 
   const customStyles = {
-    control: (base) => ({
+    control: (base, state) => ({
       ...base,
-      backgroundColor: "#0f172a",
+      backgroundColor: "rgba(2, 6, 23, 0.6)",
       color: "white",
-      borderRadius: "10px",
-      minHeight: "42px",
-      border: "1px solid rgba(255, 255, 255, 0.1)"
+      borderRadius: "1rem",
+      padding: "0.25rem 0.5rem",
+      border: state.isFocused ? "1px solid rgba(99, 102, 241, 0.5)" : "1px solid rgba(255, 255, 255, 0.05)",
+      boxShadow: state.isFocused ? "0 0 15px rgba(99, 102, 241, 0.1)" : "inset 0 2px 4px rgba(0,0,0,0.1)",
+      transition: "all 0.3s ease"
     }),
-    singleValue: (base) => ({
-      ...base,
-      color: "white"
-    }),
-    menu: (base) => ({
-      ...base,
-      backgroundColor: "#1e293b",
-      color: "white",
-      zIndex: 5
-    }),
+    singleValue: (base) => ({ ...base, color: "white", fontWeight: "800", fontSize: "0.75rem" }),
+    placeholder: (base) => ({ ...base, color: "rgba(148, 163, 184, 0.5)", fontSize: "0.75rem", fontWeight: "800" }),
+    menu: (base) => ({ ...base, backgroundColor: "#0f172a", borderRadius: "1rem", border: "1px solid rgba(255, 255, 255, 0.1)", overflow: "hidden", zIndex: 100 }),
     option: (base, state) => ({
       ...base,
-      backgroundColor: state.isFocused ? "#3b82f6" : "#1e293b",
+      backgroundColor: state.isFocused ? "rgba(99, 102, 241, 0.2)" : "transparent",
       color: "white",
-      cursor: "pointer"
-    })
+      padding: "12px 20px",
+      fontSize: "0.75rem",
+      fontWeight: "800",
+      cursor: "pointer",
+      transition: "all 0.2s ease"
+    }),
+    input: (base) => ({ ...base, color: "white" }),
   };
 
-  // Warning handled during fetch
-
   return (
-    <>
-      <header>
-        <h1>AKTU Counselling Helper</h1>
-        <p className="subtitle">Official OR-CR Cutoff Analytics Platform</p>
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-900 to-black text-slate-200 pb-24 md:pb-8 selection:bg-indigo-500/30">
+      {/* ── Desktop Navigation ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl shadow-2xl">
+        <div className="max-w-7xl mx-auto px-10 h-24 flex items-center justify-between">
+          <div className="flex items-center gap-4 group cursor-pointer">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-white/10">
+              <span className="text-white font-black text-2xl italic tracking-tighter">A</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white font-black text-2xl tracking-tighter uppercase leading-none">AKTU <span className="text-indigo-400">Helper</span></span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1 opacity-50">Counselling 2025</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1 bg-white/5 p-1.5 rounded-[2rem] border border-white/5 shadow-inner">
+            {[
+              { id: 'search', icon: '🔍', label: 'Search' },
+              { id: 'analytics', icon: '📊', label: 'Analytics' },
+              { id: 'predictor', icon: '🚀', label: 'Predictor' },
+              { id: 'compare', icon: '⚖️', label: 'Compare' },
+              { id: 'rank comparison', icon: '📈', label: 'Rankings' }
+            ].map(tab => (
+              <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex items-center gap-2.5 px-7 py-3 rounded-[1.5rem] font-black transition-all duration-500 group/btn ${
+                  activeTab === tab.id 
+                    ? 'text-white' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {activeTab === tab.id ? (
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 rounded-[1.5rem] border border-indigo-500/30 shadow-[0_4px_15px_rgba(99,102,241,0.2)] animate-scaleIn"></div>
+                ) : (
+                  <div className="absolute inset-0 bg-white/0 group-hover/btn:bg-white/5 rounded-[1.5rem] transition-all duration-300"></div>
+                )}
+                <span className={`relative z-10 text-xl transition-transform duration-500 ${activeTab === tab.id ? 'scale-125' : 'group-hover/btn:scale-110'}`}>{tab.icon}</span>
+                <span className="relative z-10 text-xs uppercase tracking-widest">{tab.label}</span>
+                {activeTab === tab.id && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-1 bg-indigo-500 rounded-full shadow-[0_0_15px_#6366f1] animate-fadeIn"></div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="px-5 py-2 rounded-full border border-indigo-500/30 bg-indigo-500/5 backdrop-blur-md flex items-center gap-3 shadow-lg">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]"></div>
+              <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest leading-none">Live Data</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Mobile Top Bar ── */}
+      <header className="md:hidden sticky top-0 z-50 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-6 py-5 flex items-center justify-between shadow-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center border border-white/10">
+            <span className="text-white font-black text-lg italic tracking-tighter">A</span>
+          </div>
+          <span className="text-white font-black tracking-tighter uppercase text-base">AKTU <span className="text-indigo-400">Helper</span></span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Active</span>
+        </div>
       </header>
 
-      <main>
-        {/* Navigation Tabs */}
-        <div className="tabs-container" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {['search', 'analytics', 'predictor', 'compare', 'rank comparison'].map(tab => (
+      {/* ── Mobile Bottom Navigation ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-3xl border-t border-white/5 px-4 pt-4 pb-10 shadow-[0_-20px_40px_rgba(0,0,0,0.6)] rounded-t-[2.5rem]">
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {[
+            { id: 'search', icon: '🔍', label: 'Search' },
+            { id: 'analytics', icon: '📊', label: 'Trends' },
+            { id: 'predictor', icon: '🚀', label: 'Predict' },
+            { id: 'compare', icon: '⚖️', label: 'Compare' },
+            { id: 'rank comparison', icon: '📈', label: 'Rankings' }
+          ].map(tab => (
             <button 
-              key={tab} 
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '0.75rem 1.5rem',
-                borderRadius: '8px',
-                border: '1px solid var(--glass-border)',
-                background: activeTab === tab ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                color: activeTab === tab ? '#60a5fa' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                textTransform: 'capitalize',
-                transition: 'all 0.2s ease',
-                flex: '1 1 auto',
-                maxWidth: '200px'
-              }}
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id)}
+              className="flex flex-col items-center gap-2 group transition-all"
             >
-              {tab}
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 relative ${
+                activeTab === tab.id 
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-[0_8px_25px_rgba(79,70,229,0.3)] scale-110' 
+                  : 'text-slate-500 active:scale-90'
+              }`}>
+                {activeTab === tab.id && (
+                  <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full animate-pulse"></div>
+                )}
+                <span className={`text-2xl transition-transform relative z-10 ${activeTab === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-tighter transition-all relative z-10 ${
+                activeTab === tab.id ? 'text-indigo-400 translate-y-0.5' : 'text-slate-600 opacity-60'
+              }`}>
+                {tab.label}
+              </span>
             </button>
           ))}
         </div>
+      </nav>
 
-        {activeTab === 'search' && (
-          <>
-            {/* Filter Controls Section */}
-        <section className="glass-container filter-section">
-          <h3>Search Cutoffs</h3>
-          <div className="filter-grid">
-            <div className="filter-group">
-              <label>Counselling Year</label>
-              <select name="year" value={filters.year} onChange={handleFilterChange}>
-                <option value="all">All Years</option>
-                <option value="2025">2025</option>
-              </select>
-            </div>
-            <div className="filter-group">
-              <label>Round Number</label>
-              <select name="round" value={filters.round} onChange={handleFilterChange}>
-                <option value="all">All Rounds</option>
-                {roundOptions.map(r => (
-                  // Named rounds (Special Round, Spot Round) already have full label;
-                  // numeric rounds ("1", "2") get the "Round " prefix added
-                  <option key={r} value={r}>
-                    {/^\d+$/.test(r) ? `Round ${r}` : r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group" style={{ zIndex: 10 }}>
-              <label>Institute Name</label>
-              <Select
-                options={instituteOptions}
-                onChange={(selected) => handleFilterChange({ target: { name: 'institute', value: selected.value } })}
-                value={instituteOptions.find(opt => opt.value === filters.institute)}
-                styles={customStyles}
-                isSearchable={true}
-                isDisabled={loading}
-              />
-            </div>
-            <div className="filter-group" style={{ zIndex: 9 }}>
-              <label>Program Name</label>
-              <Select
-                options={programOptions}
-                onChange={(selected) => handleFilterChange({ target: { name: 'program', value: selected.value } })}
-                value={programOptions.find(opt => opt.value === filters.program)}
-                styles={customStyles}
-                isSearchable={true}
-                isDisabled={loading}
-              />
-            </div>
-            <div className="filter-group">
-              <label>Category</label>
-              <select
-                name="category"
-                value={filters.category}
-                onChange={handleFilterChange}
-                disabled={loading}
-              >
-                <option value="all">All Categories</option>
-                {uniqueCategories.map((cat, index) => (
-                  <option key={index} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
-              <label>Quota</label>
-              <select
-                name="quota"
-                value={filters.quota}
-                onChange={handleFilterChange}
-                disabled={loading}
-              >
-                <option value="all">All Quotas</option>
-                {uniqueQuotas.map((quota, index) => (
-                  <option key={index} value={quota}>{quota}</option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
-              <label>Gender</label>
-              <select
-                name="gender"
-                value={filters.gender}
-                onChange={handleFilterChange}
-                disabled={loading}
-              >
-                <option value="all">All Genders</option>
-                {uniqueGenders.map((gen, index) => (
-                  <option key={index} value={gen}>{gen}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button 
-              className="search-btn" 
-              onClick={() => setAppliedFilters(filters)} 
-              disabled={loading || isSearching} 
-              style={{ 
-                flex: 1, 
-                backgroundColor: '#3b82f6', 
-                border: '1px solid #3b82f6', 
-                color: 'white', 
-                padding: '0.75rem', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                transition: 'all 0.2s',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              🔍 Search
-            </button>
-            <button className="reset-btn" onClick={handleResetFilters} disabled={loading || isSearching} style={{ flex: 1, backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
-              Reset Filters
-            </button>
-          </div>
-        </section>
+      <div className="w-full max-w-7xl mx-auto p-4 sm:p-10 pt-16 md:pt-40 flex flex-col min-h-screen">
+        <main key={activeTab} className="flex-1 max-w-6xl mx-auto w-full animate-slideUp">
 
-        {error && (
-          <div className="glass-container error-alert" style={{ margin: '2rem 0', borderColor: 'rgba(239, 68, 68, 0.5)', background: 'rgba(239, 68, 68, 0.1)' }}>
-            <p style={{ color: '#f87171', fontWeight: '500' }}>{error}</p>
-          </div>
-        )}
+          {activeTab === 'search' && (
+            <>
+              {/* Filter Controls Section */}
+              <section className="bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] p-10 md:p-12 mb-16 shadow-2xl relative overflow-hidden group">
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full transition-opacity duration-1000 opacity-30 group-hover:opacity-60"></div>
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-500/5 blur-[100px] rounded-full transition-opacity duration-1000 opacity-20 group-hover:opacity-40"></div>
+                
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-12 pb-8 border-b border-white/5 gap-6">
+                  <div className="flex flex-col">
+                    <h3 className="text-3xl md:text-4xl font-black text-white flex items-center gap-4 uppercase tracking-tighter italic">
+                      Discovery <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Engine</span>
+                    </h3>
+                    <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.4em] mt-3 opacity-60">Multi-parameter search optimization</p>
+                  </div>
+                  <button 
+                    onClick={handleResetFilters}
+                    className="h-12 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-white/5 transition-all flex items-center gap-3 backdrop-blur-sm shadow-xl"
+                  >
+                    <span className="text-base">↺</span> Refresh Index
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {/* Row 1 */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Session</label>
+                    <div className="relative group/field">
+                      <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full bg-slate-950/60 border border-white/5 rounded-2xl px-6 py-4 text-white font-black outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer text-xs shadow-inner group-hover/field:border-white/10">
+                        <option value="all">2025 (Official)</option>
+                        <option value="2025">2025 Final</option>
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 text-[10px]">▼</div>
+                    </div>
+                  </div>
 
-        {warning && (
-          <div className="glass-container warning-alert" style={{ margin: '2rem 0', borderColor: 'rgba(245, 158, 11, 0.5)', background: 'rgba(245, 158, 11, 0.1)' }}>
-            <p style={{ color: '#fbbf24', fontWeight: '500' }}>{warning}</p>
-          </div>
-        )}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Phase</label>
+                    <div className="relative group/field">
+                      <select name="round" value={filters.round} onChange={handleFilterChange} className="w-full bg-slate-950/60 border border-white/5 rounded-2xl px-6 py-4 text-white font-black outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer text-xs shadow-inner group-hover/field:border-white/10">
+                        {roundOptions.map(r => (
+                          <option key={r} value={r} className="bg-slate-900 text-slate-200">
+                            {r === 'All Rounds' ? 'Round 1 to 7' : r}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 text-[10px]">▼</div>
+                    </div>
+                  </div>
 
-        {/* Data Table Section */}
-        {activeTab === 'search' && loading ? (
-          <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Loading cutoff data...</p>
-          </div>
-        ) : activeTab === 'search' && isSearching ? (
-          <div className="loader-container" style={{ margin: '2rem 0', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', fontWeight: '500' }}>Applying filters...</p>
-          </div>
-        ) : activeTab === 'search' ? (
-            <CutoffList cutoffs={filteredCutoffs} appliedFilters={appliedFilters} />
-        ) : null}
-          </>
-        )}
+                  <div className="space-y-3 lg:col-span-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Institution</label>
+                    <Select
+                      options={instituteOptions}
+                      onChange={(selected) => handleFilterChange({ target: { name: 'institute', value: selected.value } })}
+                      value={instituteOptions.find(opt => opt.value === filters.institute)}
+                      styles={customStyles}
+                      isSearchable={true}
+                      isDisabled={loading}
+                      placeholder="University of Institute name..."
+                      className="text-xs font-black"
+                    />
+                  </div>
 
-        {activeTab === 'analytics' && (
-          <CutoffTrendGraph 
-            allCutoffs={allCutoffs} 
-            uniqueInstitutes={uniqueInstitutes} 
-            uniquePrograms={uniquePrograms} 
-            uniqueCategories={uniqueCategories} 
-          />
-        )}
+                  {/* Row 2 */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Categorization</label>
+                    <div className="relative group/field">
+                      <select
+                        name="category"
+                        value={filters.category}
+                        onChange={handleFilterChange}
+                        disabled={loading}
+                        className="w-full bg-slate-950/60 border border-white/5 rounded-2xl px-6 py-4 text-white font-black outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer text-xs shadow-inner group-hover/field:border-white/10"
+                      >
+                        <option value="all">All Profiles</option>
+                        {uniqueCategories.map((cat, index) => (
+                          <option key={index} value={cat} className="bg-slate-900">{cat}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 text-[10px]">▼</div>
+                    </div>
+                  </div>
 
-        {activeTab === 'predictor' && (
-          <RankPredictor
-            allCutoffs={allCutoffs}
-            uniqueCategories={categoryList}
-            uniqueQuotas={quotaList}
-            uniquePrograms={programList}
-          />
-        )}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Quota</label>
+                    <div className="relative group/field">
+                      <select
+                        name="quota"
+                        value={filters.quota}
+                        onChange={handleFilterChange}
+                        disabled={loading}
+                        className="w-full bg-slate-950/60 border border-white/5 rounded-2xl px-6 py-4 text-white font-black outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer text-xs shadow-inner group-hover/field:border-white/10"
+                      >
+                        <option value="all">Global Quota</option>
+                        {uniqueQuotas.map((quota, index) => (
+                          <option key={index} value={quota} className="bg-slate-900">{quota}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 text-[10px]">▼</div>
+                    </div>
+                  </div>
 
+                  <div className="space-y-3 lg:col-span-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Discipline</label>
+                    <Select
+                      options={programOptions}
+                      onChange={(selected) => handleFilterChange({ target: { name: 'program', value: selected.value } })}
+                      value={programOptions.find(opt => opt.value === filters.program)}
+                      styles={customStyles}
+                      isSearchable={true}
+                      isDisabled={loading}
+                      placeholder="Engineering or Medical Discipline..."
+                      className="text-xs font-black"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-12 flex flex-col md:flex-row gap-6">
+                  <button 
+                    className="flex-[4] h-20 group relative overflow-hidden rounded-[1.75rem] shadow-2xl shadow-indigo-600/20 active:scale-[0.98] transition-all"
+                    onClick={() => setAppliedFilters(filters)} 
+                    disabled={loading || isSearching} 
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 group-hover:scale-110 transition-transform duration-700 bg-[length:200%_100%] group-hover:bg-[100%_0%]"></div>
+                    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <span className="relative z-10 text-white font-black text-xl uppercase tracking-[0.3em] flex items-center justify-center gap-5">
+                      {isSearching ? (
+                        <>
+                          <div className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
+                          Processing Matrix...
+                        </>
+                      ) : (
+                        <>Initialize Search <span className="text-2xl italic group-hover:translate-x-2 transition-transform">→</span></>
+                      )}
+                    </span>
+                  </button>
 
-        {activeTab === 'compare' && (
-          <CollegeComparison />
-        )}
+                  <button 
+                    onClick={handleResetFilters}
+                    className="flex-1 h-20 bg-slate-950/40 hover:bg-slate-900 border border-white/5 rounded-[1.75rem] font-black uppercase tracking-[0.25em] text-slate-500 hover:text-white transition-all text-[10px] backdrop-blur-md shadow-xl"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              </section>
 
-        {activeTab === 'rank comparison' && (
-          <RankComparison 
-            collegeList={uniqueInstitutes}
-            uniqueCategories={uniqueCategories}
-            uniqueQuotas={uniqueQuotas}
-          />
-        )}
-      </main>
-    </>
+              {error && (
+                <div className="glass-card mb-8 p-6 border-red-500/50 bg-red-500/10 animate-fadeIn">
+                  <p className="text-red-400 font-black text-sm uppercase tracking-widest">{error}</p>
+                </div>
+              )}
+
+              {warning && (
+                <div className="glass-card mb-8 p-6 border-amber-500/50 bg-amber-500/10 animate-fadeIn">
+                  <p className="text-amber-400 font-black text-sm uppercase tracking-widest">{warning}</p>
+                </div>
+              )}
+
+              {activeTab === 'search' && (
+                <CutoffList 
+                  cutoffs={filteredCutoffs} 
+                  appliedFilters={appliedFilters} 
+                  isLoading={loading || isSearching} 
+                />
+              )}
+            </>
+          )}
+
+          {activeTab === 'analytics' && (
+            <CutoffTrendGraph 
+              allCutoffs={allCutoffs} 
+              uniqueInstitutes={uniqueInstitutes} 
+              uniquePrograms={uniquePrograms} 
+              uniqueCategories={uniqueCategories} 
+            />
+          )}
+
+          {activeTab === 'predictor' && (
+            <RankPredictor
+              allCutoffs={allCutoffs}
+              uniqueCategories={categoryList}
+              uniqueQuotas={quotaList}
+              uniquePrograms={programList}
+            />
+          )}
+
+          {activeTab === 'compare' && (
+            <CollegeComparison />
+          )}
+
+          {activeTab === 'rank comparison' && (
+            <RankComparison 
+              collegeList={uniqueInstitutes}
+              uniqueCategories={uniqueCategories}
+              uniqueQuotas={uniqueQuotas}
+            />
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
 
