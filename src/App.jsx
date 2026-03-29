@@ -208,9 +208,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-900 to-black text-slate-200 pb-24 md:pb-8 selection:bg-indigo-500/30">
+    <div className="h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950 via-slate-900 to-black text-slate-200 flex flex-col selection:bg-indigo-500/30">
       {/* ── Desktop Navigation ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl shadow-2xl">
+      <nav className="relative z-50 hidden md:block border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl shadow-2xl flex-none">
         <div className="max-w-7xl mx-auto px-10 h-24 flex items-center justify-between">
           <div className="flex items-center gap-4 group cursor-pointer">
             <div className="w-12 h-12 bg-white/5 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/10 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-white/10 overflow-hidden relative">
@@ -264,7 +264,7 @@ function App() {
       </nav>
 
       {/* ── Mobile Top Bar ── */}
-      <header className="md:hidden sticky top-0 z-50 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-6 py-5 flex items-center justify-between shadow-2xl">
+      <header className="md:hidden sticky top-0 z-50 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-6 py-5 flex items-center justify-between shadow-2xl flex-none">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 overflow-hidden">
             <img src="/logo.png" alt="AKTU" className="w-full h-full object-cover" />
@@ -311,8 +311,9 @@ function App() {
         </div>
       </nav>
 
-      <div className="w-full max-w-7xl mx-auto p-4 sm:p-10 pt-16 md:pt-40 flex flex-col min-h-screen">
-        <main key={activeTab} className="flex-1 max-w-6xl mx-auto w-full animate-slideUp">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-10 flex-1 overflow-hidden">
+        <main key={activeTab} className={`h-full w-full animate-slideUp pb-12 ${activeTab !== 'predictor' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+          <div className={`${activeTab !== 'predictor' ? 'pt-8' : ''} h-full`}>
 
           {activeTab === 'search' && (
             <>
@@ -512,6 +513,7 @@ function App() {
               uniqueQuotas={uniqueQuotas}
             />
           )}
+          </div>
         </main>
       </div>
     </div>

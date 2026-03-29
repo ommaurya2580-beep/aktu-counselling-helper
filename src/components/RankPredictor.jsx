@@ -199,9 +199,9 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
   };
 
   return (
-    <div className="space-y-12 animate-fadeIn font-outfit">
-      {/* Hero Header */}
-      <div className="relative pb-4">
+    <div className="flex flex-col h-full animate-fadeIn font-outfit overflow-hidden">
+      {/* Hero Header - Fixed at top of component */}
+      <div className="relative pb-6 flex-none">
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full"></div>
         <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter mb-4 leading-tight">
           Rank <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400 italic">Predictor</span>
@@ -211,9 +211,9 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+      <div className="flex-1 flex flex-col lg:flex-row gap-10 overflow-hidden min-h-0">
         {/* Left Column: Filters */}
-        <div className="lg:col-span-1 sticky top-24">
+        <div className="w-full lg:w-[320px] lg:flex-none h-full overflow-y-auto pr-2 custom-scrollbar">
           <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 blur-[80px] rounded-full -mr-20 -mt-20 group-hover:bg-indigo-500/10 transition-colors duration-700"></div>
             
@@ -310,7 +310,7 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
         </div>
 
         {/* Right Column: Prediction Results */}
-        <div className="lg:col-span-2 min-h-[600px]">
+        <div className="flex-1 h-full overflow-y-auto px-2 custom-scrollbar">
            {loading ? (
              <div className="space-y-12">
                {[1, 2].map((section) => (
