@@ -11,6 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import Select from 'react-select';
 
 ChartJS.register(
   CategoryScale,
@@ -36,8 +37,48 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
+  const customStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: "rgba(2, 6, 23, 0.45)",
+      color: "white",
+      borderRadius: "1.25rem",
+      padding: "0.4rem 0.6rem",
+      border: state.isFocused ? "1px solid rgba(99, 102, 241, 0.4)" : "1px solid rgba(255, 255, 255, 0.05)",
+      boxShadow: state.isFocused ? "0 0 20px rgba(99, 102, 241, 0.08)" : "none",
+      transition: "all 0.3s ease",
+      cursor: "pointer",
+      "&:hover": {
+        borderColor: "rgba(255, 255, 255, 0.12)"
+      }
+    }),
+    singleValue: (base) => ({ ...base, color: "white", fontWeight: "700", fontSize: "0.875rem" }),
+    placeholder: (base) => ({ ...base, color: "rgba(148, 163, 184, 0.4)", fontSize: "0.875rem", fontWeight: "600" }),
+    menu: (base) => ({ 
+      ...base, 
+      backgroundColor: "#0f172a", 
+      borderRadius: "1.25rem", 
+      border: "1px solid rgba(255, 255, 255, 0.08)", 
+      overflow: "hidden", 
+      zIndex: 100,
+      boxShadow: "0 15px 40px rgba(0,0,0,0.5)"
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? "rgba(99, 102, 241, 0.15)" : "transparent",
+      color: state.isFocused ? "#a5b4fc" : "white",
+      padding: "14px 24px",
+      fontSize: "0.8125rem",
+      fontWeight: "700",
+      cursor: "pointer",
+      borderBottom: "1px solid rgba(255,255,255,0.03)",
+      transition: "all 0.2s ease"
+    }),
+    input: (base) => ({ ...base, color: "white" }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+  };
+
+  const handleFilterChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
@@ -337,34 +378,54 @@ const CutoffTrendGraph = ({ allCutoffs, uniqueInstitutes, uniquePrograms, unique
       <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full -mr-20 -mt-20"></div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
           <div className="group">
-            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2.5 ml-2 group-focus-within:text-indigo-400 transition-colors">Institute</label>
-            <select name="institute" value={filters.institute} onChange={handleFilterChange} className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer">
-              <option value="">Select Institute</option>
-              {uniqueInstitutes.map((inst, i) => <option key={i} value={inst}>{inst}</option>)}
-            </select>
+            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-4 ml-2 group-focus-within:text-indigo-400 transition-colors opacity-70">Institute</label>
+            <Select
+              options={uniqueInstitutes.map(inst => ({ label: inst, value: inst }))}
+              onChange={(selected) => handleFilterChange('institute', selected?.value || '')}
+              value={filters.institute ? { label: filters.institute, value: filters.institute } : null}
+              styles={customStyles}
+              isSearchable={true}
+              placeholder="Select Institute..."
+              menuPortalTarget={document.body}
+            />
           </div>
           <div className="group">
-            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2.5 ml-2 group-focus-within:text-indigo-400 transition-colors">Primary Program</label>
-            <select name="program" value={filters.program} onChange={handleFilterChange} className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer">
-              <option value="">Select Program</option>
-              {displayPrograms.map((prog, i) => <option key={i} value={prog}>{prog}</option>)}
-            </select>
+            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-4 ml-2 group-focus-within:text-indigo-400 transition-colors opacity-70">Primary Program</label>
+            <Select
+              options={displayPrograms.map(prog => ({ label: prog, value: prog }))}
+              onChange={(selected) => handleFilterChange('program', selected?.value || '')}
+              value={filters.program ? { label: filters.program, value: filters.program } : null}
+              styles={customStyles}
+              isSearchable={true}
+              placeholder="Select Program..."
+              menuPortalTarget={document.body}
+            />
           </div>
           <div className="group">
-            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2.5 ml-2 group-focus-within:text-purple-400 transition-colors">Compare With (Optional)</label>
-            <select name="compareProgram" value={filters.compareProgram} onChange={handleFilterChange} className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all appearance-none cursor-pointer">
-              <option value="">Select Compare Branch</option>
-              {displayPrograms.map((prog, i) => <option key={i} value={prog}>{prog}</option>)}
-            </select>
+            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-4 ml-2 group-focus-within:text-purple-400 transition-colors opacity-70">Compare With (Optional)</label>
+            <Select
+              options={displayPrograms.map(prog => ({ label: prog, value: prog }))}
+              onChange={(selected) => handleFilterChange('compareProgram', selected?.value || '')}
+              value={filters.compareProgram ? { label: filters.compareProgram, value: filters.compareProgram } : null}
+              styles={customStyles}
+              isSearchable={true}
+              placeholder="Compare Branch..."
+              menuPortalTarget={document.body}
+            />
           </div>
           <div className="group">
-            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2.5 ml-2 group-focus-within:text-indigo-400 transition-colors">Category</label>
-            <select name="category" value={filters.category} onChange={handleFilterChange} className="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer">
-              <option value="">Select Category</option>
-              {uniqueCategories.map((cat, i) => <option key={i} value={cat}>{cat}</option>)}
-            </select>
+            <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-4 ml-2 group-focus-within:text-indigo-400 transition-colors opacity-70">Category</label>
+            <Select
+              options={uniqueCategories.map(cat => ({ label: cat, value: cat }))}
+              onChange={(selected) => handleFilterChange('category', selected?.value || '')}
+              value={filters.category ? { label: filters.category, value: filters.category } : null}
+              styles={customStyles}
+              isSearchable={true}
+              placeholder="Select Category..."
+              menuPortalTarget={document.body}
+            />
           </div>
         </div>
 

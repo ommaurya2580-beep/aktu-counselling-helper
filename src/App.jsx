@@ -204,6 +204,7 @@ function App() {
       transition: "all 0.2s ease"
     }),
     input: (base) => ({ ...base, color: "white" }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
   };
 
   return (
@@ -212,12 +213,13 @@ function App() {
       <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl shadow-2xl">
         <div className="max-w-7xl mx-auto px-10 h-24 flex items-center justify-between">
           <div className="flex items-center gap-4 group cursor-pointer">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-white/10">
-              <span className="text-white font-black text-2xl italic tracking-tighter">A</span>
+            <div className="w-12 h-12 bg-white/5 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/10 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-white/10 overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20"></div>
+              <span className="text-white font-black text-2xl relative z-10">A</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-black text-2xl tracking-tighter uppercase leading-none">AKTU <span className="text-indigo-400">Helper</span></span>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1 opacity-50">Counselling 2025</span>
+              <span className="text-white font-black text-2xl tracking-tighter uppercase leading-none">AKTU <span className="text-indigo-400">Counselling Helper 2026</span></span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1 opacity-50">Official 2025</span>
             </div>
           </div>
           
@@ -264,13 +266,13 @@ function App() {
       {/* ── Mobile Top Bar ── */}
       <header className="md:hidden sticky top-0 z-50 bg-slate-950/60 backdrop-blur-2xl border-b border-white/5 px-6 py-5 flex items-center justify-between shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center border border-white/10">
-            <span className="text-white font-black text-lg italic tracking-tighter">A</span>
+          <div className="w-9 h-9 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 overflow-hidden">
+            <img src="/logo.png" alt="AKTU" className="w-full h-full object-cover" />
           </div>
-          <span className="text-white font-black tracking-tighter uppercase text-base">AKTU <span className="text-indigo-400">Helper</span></span>
+          <span className="text-white font-black tracking-tighter uppercase text-base">AKTU <span className="text-indigo-400">Counselling Helper 2026</span></span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Active</span>
+          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Official 2025</span>
         </div>
       </header>
 
@@ -315,7 +317,7 @@ function App() {
           {activeTab === 'search' && (
             <>
               {/* Filter Controls Section */}
-              <section className="bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] p-10 md:p-12 mb-16 shadow-2xl relative overflow-hidden group">
+              <section className="bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] p-10 md:p-12 mb-16 shadow-2xl relative group">
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full transition-opacity duration-1000 opacity-30 group-hover:opacity-60"></div>
                 <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-500/5 blur-[100px] rounded-full transition-opacity duration-1000 opacity-20 group-hover:opacity-40"></div>
                 
@@ -340,8 +342,7 @@ function App() {
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Session</label>
                     <div className="relative group/field">
                       <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full bg-slate-950/60 border border-white/5 rounded-2xl px-6 py-4 text-white font-black outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer text-xs shadow-inner group-hover/field:border-white/10">
-                        <option value="all">2025 (Official)</option>
-                        <option value="2025">2025 Final</option>
+                        <option value="all">Official 2025</option>
                       </select>
                       <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600 text-[10px]">▼</div>
                     </div>
@@ -363,14 +364,15 @@ function App() {
 
                   <div className="space-y-3 lg:col-span-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2 opacity-60">Institution</label>
-                    <Select
-                      options={instituteOptions}
-                      onChange={(selected) => handleFilterChange({ target: { name: 'institute', value: selected.value } })}
-                      value={instituteOptions.find(opt => opt.value === filters.institute)}
-                      styles={customStyles}
-                      isSearchable={true}
-                      isDisabled={loading}
-                      placeholder="University of Institute name..."
+                      <Select
+                        options={instituteOptions}
+                        onChange={(selected) => handleFilterChange({ target: { name: 'institute', value: selected.value } })}
+                        value={instituteOptions.find(opt => opt.value === filters.institute)}
+                        styles={customStyles}
+                        isSearchable={true}
+                        isDisabled={loading}
+                        menuPortalTarget={document.body}
+                        placeholder="University or Institute name..."
                       className="text-xs font-black"
                     />
                   </div>
@@ -423,6 +425,7 @@ function App() {
                       styles={customStyles}
                       isSearchable={true}
                       isDisabled={loading}
+                      menuPortalTarget={document.body}
                       placeholder="Engineering or Medical Discipline..."
                       className="text-xs font-black"
                     />

@@ -1,6 +1,45 @@
 import React, { useState } from 'react';
+import Select from 'react-select';
 import { predictColleges } from '../utils/predictor.js';
 import Skeleton from './Skeleton.jsx';
+
+const customStyles = {
+  control: (base, state) => ({
+    ...base,
+    background: "rgba(2, 6, 23, 0.5)",
+    backdropFilter: "blur(40px)",
+    borderColor: state.isFocused ? "rgba(99, 102, 241, 0.4)" : "rgba(255, 255, 255, 0.05)",
+    borderRadius: "1rem",
+    padding: "6px",
+    color: "white",
+    boxShadow: state.isFocused ? "0 0 20px rgba(99, 102, 241, 0.1)" : "none",
+    "&:hover": { borderColor: "rgba(255, 255, 255, 0.1)" },
+    cursor: "pointer",
+  }),
+  menu: (base) => ({
+    ...base,
+    background: "rgba(15, 23, 42, 0.95)",
+    backdropFilter: "blur(20px)",
+    borderRadius: "1rem",
+    border: "1px border rgba(255, 255, 255, 0.05)",
+    overflow: "hidden",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+  }),
+  option: (base, state) => ({
+    ...base,
+    background: state.isSelected ? "rgba(99, 102, 241, 0.4)" : state.isFocused ? "rgba(255, 255, 255, 0.05)" : "transparent",
+    color: "white",
+    padding: "12px 20px",
+    fontSize: "0.75rem",
+    fontWeight: "800",
+    cursor: "pointer",
+    transition: "all 0.2s ease"
+  }),
+  input: (base) => ({ ...base, color: "white" }),
+  singleValue: (base) => ({ ...base, color: "white", fontWeight: "800", fontSize: "0.875rem" }),
+  placeholder: (base) => ({ ...base, color: "rgba(71, 85, 105, 1)", fontSize: "0.875rem", fontWeight: "800" }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
 
 const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
   const [filters, setFilters] = useState({ rank: '', category: '', quota: '', branch: '', round: '1' });
@@ -9,8 +48,14 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
   const [results, setResults] = useState({ high: [], medium: [], low: [] });
 
   const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    if (e.target) {
+      const { name, value } = e.target;
+      setFilters(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSelectChange = (selected, name) => {
+    setFilters(prev => ({ ...prev, [name]: selected?.value || '' }));
   };
 
   const handlePredict = async () => {
@@ -199,41 +244,38 @@ const RankPredictor = ({ uniqueCategories, uniqueQuotas, uniquePrograms }) => {
 
                 <div className="group/input">
                   <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.25em] mb-3 ml-2 group-focus-within/input:text-indigo-400 transition-colors">Category</label>
-                  <select 
-                    name="category" 
-                    value={filters.category} 
-                    onChange={handleFilterChange}
-                    className="w-full bg-slate-950/50 border border-white/5 rounded-2xl p-4 text-white font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer shadow-inner"
-                  >
-                    <option value="" className="bg-slate-900">Select Category</option>
-                    {uniqueCategories?.map((c, i) => <option key={i} value={c} className="bg-slate-900">{c}</option>)}
-                  </select>
+                  <Select
+                    options={uniqueCategories?.map(c => ({ value: c, label: c }))}
+                    value={filters.category ? { value: filters.category, label: filters.category } : null}
+                    onChange={(selected) => handleSelectChange(selected, 'category')}
+                    styles={customStyles}
+                    menuPortalTarget={document.body}
+                    placeholder="Select Category"
+                  />
                 </div>
 
                 <div className="group/input">
                   <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.25em] mb-3 ml-2 group-focus-within/input:text-indigo-400 transition-colors">Quota</label>
-                  <select 
-                    name="quota" 
-                    value={filters.quota} 
-                    onChange={handleFilterChange}
-                    className="w-full bg-slate-950/50 border border-white/5 rounded-2xl p-4 text-white font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer shadow-inner"
-                  >
-                    <option value="" className="bg-slate-900">Select Quota</option>
-                    {uniqueQuotas?.map((q, i) => <option key={i} value={q} className="bg-slate-900">{q}</option>)}
-                  </select>
+                  <Select
+                    options={uniqueQuotas?.map(q => ({ value: q, label: q }))}
+                    value={filters.quota ? { value: filters.quota, label: filters.quota } : null}
+                    onChange={(selected) => handleSelectChange(selected, 'quota')}
+                    styles={customStyles}
+                    menuPortalTarget={document.body}
+                    placeholder="Select Quota"
+                  />
                 </div>
 
                 <div className="group/input">
                   <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.25em] mb-3 ml-2 group-focus-within/input:text-indigo-400 transition-colors">Preferred Branch</label>
-                  <select 
-                    name="branch" 
-                    value={filters.branch} 
-                    onChange={handleFilterChange}
-                    className="w-full bg-slate-950/50 border border-white/5 rounded-2xl p-4 text-white font-black focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all appearance-none cursor-pointer shadow-inner"
-                  >
-                    <option value="" className="bg-slate-900">Select Branch</option>
-                    {uniquePrograms?.map((p, i) => <option key={i} value={p} className="bg-slate-900">{p}</option>)}
-                  </select>
+                  <Select
+                    options={uniquePrograms?.map(p => ({ value: p, label: p }))}
+                    value={filters.branch ? { value: filters.branch, label: filters.branch } : null}
+                    onChange={(selected) => handleSelectChange(selected, 'branch')}
+                    styles={customStyles}
+                    menuPortalTarget={document.body}
+                    placeholder="Select Branch"
+                  />
                 </div>
 
                 <div className="group/input">

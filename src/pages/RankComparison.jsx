@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import Select from 'react-select';
 import { 
   loadComparisonData, 
   compareFast, 
@@ -6,6 +7,47 @@ import {
   findWinner,
   normalize
 } from '../utils/comparisonLoader.js';
+
+const customStyles = {
+  control: (base, state) => ({
+    ...base,
+    background: "rgba(255, 255, 255, 0.05)",
+    backdropFilter: "blur(40px)",
+    borderColor: state.isFocused ? "rgba(99, 102, 241, 0.4)" : "rgba(255, 255, 255, 0.1)",
+    borderRadius: "1.5rem",
+    padding: "10px",
+    color: "white",
+    boxShadow: state.isFocused ? "0 0 20px rgba(99, 102, 241, 0.1)" : "none",
+    "&:hover": { borderColor: "rgba(255, 255, 255, 0.2)" },
+    cursor: "pointer",
+  }),
+  menu: (base) => ({
+    ...base,
+    background: "rgba(15, 23, 42, 0.98)",
+    backdropFilter: "blur(20px)",
+    borderRadius: "1.5rem",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    overflow: "hidden",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+    zIndex: 9999
+  }),
+  option: (base, state) => ({
+    ...base,
+    background: state.isSelected ? "rgba(99, 102, 241, 0.4)" : state.isFocused ? "rgba(255, 255, 255, 0.05)" : "transparent",
+    color: "white",
+    padding: "14px 24px",
+    fontSize: "0.75rem",
+    fontWeight: "800",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em"
+  }),
+  input: (base) => ({ ...base, color: "white" }),
+  singleValue: (base) => ({ ...base, color: "white", fontWeight: "800", fontSize: "0.875rem" }),
+  placeholder: (base) => ({ ...base, color: "rgba(71, 85, 105, 1)", fontSize: "0.875rem", fontWeight: "800" }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
 
 /* ─── constants ─────────────────────────────────────────────────── */
 const MAX_SELECTED_COLLEGES = 3;
@@ -80,7 +122,6 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
     gender: 'Both Male and Female Seats'
   });
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState({
     institutes: collegeList,
     categories: uniqueCategories,
@@ -88,7 +129,6 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
     genders: ['Both Male and Female Seats', 'Female Seats Only'],
     rounds: ['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 6', 'Round 7']
   });
-  const [showDropdown, setShowDropdown] = useState(false);
 
   // Synchronize internal state if props change
   useEffect(() => {
@@ -116,40 +156,9 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
     initData();
   }, []);
 
-  // Use central normalize utility for robust matching
-  const normalizeForSearch = (str) => normalize(str);
-
-  const getAcronym = (text) => {
-      if (!text) return '';
-      const words = text.split(/[^a-zA-Z0-9]+/);
-      return words.filter(w => !['of', 'and', 'the', 'in', 'at', 'for', 'instt', 'engg'].includes(w.toLowerCase()) && w.length > 0)
-                  .map(w => w[0].toLowerCase())
-                  .join('');
-  };
-
-  const filteredCollegesList = useMemo(() => {
-    if (!searchQuery) return [];
-    
-    const normalizedQuery = normalizeForSearch(searchQuery);
-    
-    return filterOptions.institutes.filter(inst => {
-      const normalizedInst = normalizeForSearch(inst);
-      const acronym = getAcronym(inst);
-      
-      // Try exact includes on raw string OR normalized matching for abbreviations like "G.L. Bajaj" OR acronym match for "IET"
-      const isMatch = inst.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                     normalizedInst.includes(normalizedQuery) ||
-                     acronym.includes(normalizedQuery);
-                     
-      return isMatch && !selectedColleges.includes(inst);
-    }).slice(0, 10);
-  }, [searchQuery, selectedColleges]);
-
   const handleSelectCollege = (college) => {
-    if (selectedColleges.length < 3) {
+    if (selectedColleges.length < MAX_SELECTED_COLLEGES) {
       setSelectedColleges([...selectedColleges, college]);
-      setSearchQuery('');
-      setShowDropdown(false);
     }
   };
 
@@ -248,16 +257,6 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
     updateResults();
   }, [selectedColleges, selectedRound, filters]);
 
-  const searchRef = React.useRef(null);
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   return (
     <div className="min-h-screen bg-transparent text-slate-300 pb-20 pt-6 lg:pt-10 font-outfit">
@@ -276,7 +275,7 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
         </header>
 
         {/* Filters & Selector Box */}
-        <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 mb-16 shadow-2xl relative overflow-hidden group">
+        <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 mb-16 shadow-2xl relative group">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 blur-[120px] rounded-full -mr-48 -mt-48 transition-opacity duration-700 opacity-30 group-hover:opacity-60"></div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 relative z-10">
@@ -285,16 +284,14 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
               <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2 opacity-60">
                 Academic Phase
               </label>
-              <div className="relative group/select">
-                <select
-                  className="w-full bg-white/5 border border-white/10 text-white px-6 py-5 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all font-black cursor-pointer appearance-none text-sm tracking-tight group-hover/select:border-white/20 font-outfit"
-                  value={selectedRound}
-                  onChange={(e) => setSelectedRound(e.target.value)}
-                >
-                  {filterOptions.rounds.map(r => <option key={r} value={r} className="bg-slate-900">{r}</option>)}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>
-              </div>
+              <Select
+                options={filterOptions.rounds.map(r => ({ value: r, label: r }))}
+                value={{ value: selectedRound, label: selectedRound }}
+                onChange={(selected) => setSelectedRound(selected.value)}
+                styles={customStyles}
+                menuPortalTarget={document.body}
+                placeholder="Select Phase"
+              />
             </div>
 
             {/* Category Select */}
@@ -302,16 +299,14 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
               <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2 opacity-60">
                 Quota Category
               </label>
-              <div className="relative group/select">
-                <select
-                  className="w-full bg-white/5 border border-white/10 text-white px-6 py-5 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all font-black cursor-pointer appearance-none text-sm tracking-tight group-hover/select:border-white/20 font-outfit"
-                  value={filters.category}
-                  onChange={(e) => setFilters({...filters, category: e.target.value})}
-                >
-                  {filterOptions.categories.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>
-              </div>
+              <Select
+                options={filterOptions.categories.map(c => ({ value: c, label: c }))}
+                value={{ value: filters.category, label: filters.category }}
+                onChange={(selected) => setFilters({...filters, category: selected.value})}
+                styles={customStyles}
+                menuPortalTarget={document.body}
+                placeholder="Select Category"
+              />
             </div>
 
             {/* Quota Select */}
@@ -319,16 +314,14 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
               <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2 opacity-60">
                 State Eligibility
               </label>
-              <div className="relative group/select">
-                <select
-                  className="w-full bg-white/5 border border-white/10 text-white px-6 py-5 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all font-black cursor-pointer appearance-none text-sm tracking-tight group-hover/select:border-white/20 font-outfit"
-                  value={filters.quota}
-                  onChange={(e) => setFilters({...filters, quota: e.target.value})}
-                >
-                  {filterOptions.quotas.map(q => <option key={q} value={q} className="bg-slate-900">{q}</option>)}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>
-              </div>
+              <Select
+                options={filterOptions.quotas.map(q => ({ value: q, label: q }))}
+                value={{ value: filters.quota, label: filters.quota }}
+                onChange={(selected) => setFilters({...filters, quota: selected.value})}
+                styles={customStyles}
+                menuPortalTarget={document.body}
+                placeholder="Select State"
+              />
             </div>
 
             {/* Gender Select */}
@@ -336,16 +329,14 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
               <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2 opacity-60">
                 Seating Stream
               </label>
-              <div className="relative group/select">
-                <select
-                  className="w-full bg-white/5 border border-white/10 text-white px-6 py-5 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all font-black cursor-pointer appearance-none text-sm tracking-tight group-hover/select:border-white/20 font-outfit"
-                  value={filters.gender}
-                  onChange={(e) => setFilters({...filters, gender: e.target.value})}
-                >
-                  {filterOptions.genders.map(g => <option key={g} value={g} className="bg-slate-900">{g}</option>)}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▼</div>
-              </div>
+              <Select
+                options={filterOptions.genders.map(g => ({ value: g, label: g }))}
+                value={{ value: filters.gender, label: filters.gender }}
+                onChange={(selected) => setFilters({...filters, gender: selected.value})}
+                styles={customStyles}
+                menuPortalTarget={document.body}
+                placeholder="Select Stream"
+              />
             </div>
           </div>
 
@@ -356,46 +347,24 @@ const RankComparison = ({ collegeList = [], uniqueCategories = [], uniqueQuotas 
                 <label className="block text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2 opacity-60">
                    Institutional Selection ({selectedColleges.length}/{MAX_SELECTED_COLLEGES})
                 </label>
-                <div className="relative group/search" ref={searchRef}>
-                  <input
-                    type="text"
-                    className="w-full bg-white/5 border border-white/10 text-white px-10 py-7 rounded-[2rem] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all placeholder:text-slate-700 font-black text-xl shadow-2xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed group-hover/search:border-white/20 font-outfit"
+                <div className="relative group/search">
+                  <Select
+                    options={filterOptions.institutes.filter(inst => !selectedColleges.includes(inst)).map(inst => ({ value: inst, label: inst }))}
+                    onChange={(selected) => handleSelectCollege(selected.value)}
+                    value={null}
+                    styles={customStyles}
+                    isSearchable={true}
+                    isDisabled={selectedColleges.length >= MAX_SELECTED_COLLEGES}
+                    menuPortalTarget={document.body}
                     placeholder={selectedColleges.length >= MAX_SELECTED_COLLEGES ? 'LIMIT REACHED' : 'SEARCH INSTITUTION NAME...'}
-                    value={searchQuery}
-                    disabled={selectedColleges.length >= MAX_SELECTED_COLLEGES}
-                    onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); }}
-                    onFocus={() => setShowDropdown(true)}
                   />
-                  
-                  {showDropdown && searchQuery && (
-                    <div className="absolute z-50 w-full mt-6 bg-slate-900/95 border border-white/10 rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden backdrop-blur-3xl animate-in fade-in slide-in-from-top-6 duration-500 border-t-indigo-500/30">
-                      <div className="max-h-80 overflow-y-auto custom-scrollbar">
-                        {filteredCollegesList.length > 0 ? filteredCollegesList.map(inst => (
-                          <button
-                            key={inst}
-                            onClick={() => handleSelectCollege(inst)}
-                            className="w-full text-left px-10 py-7 text-slate-400 hover:bg-white/5 hover:text-white transition-all border-b border-white/5 last:border-0 group/item flex items-center justify-between"
-                          >
-                            <span className="font-black uppercase tracking-tight text-lg group-hover/item:translate-x-2 transition-transform duration-300 font-outfit">{inst}</span>
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-all scale-75 group-hover/item:scale-100">
-                              <span className="text-indigo-400 text-xl font-bold">+</span>
-                            </div>
-                          </button>
-                        )) : (
-                          <div className="px-10 py-16 text-slate-600 text-sm font-black italic text-center uppercase tracking-[0.3em] opacity-50">
-                             No signature matches "{searchQuery}"
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
               {selectedColleges.length > 0 && (
                 <button 
                   onClick={() => setSelectedColleges([])}
-                  className="px-10 py-7 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all h-[84px] whitespace-nowrap active:scale-95 font-outfit shadow-lg shadow-red-500/5 group-hover:shadow-red-500/10"
+                  className="px-10 py-7 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all h-[70px] whitespace-nowrap active:scale-95 font-outfit shadow-lg shadow-red-500/5 group-hover:shadow-red-500/10 self-end"
                 >
                   Purge Selection
                 </button>

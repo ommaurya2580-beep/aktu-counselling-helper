@@ -212,6 +212,20 @@ const CutoffList = ({ cutoffs, appliedFilters, isLoading }) => {
                             <option value={100} className="bg-slate-900">100</option>
                         </select>
                     </div>
+
+                    <div className="flex items-center gap-3 bg-slate-950/30 px-4 py-2 rounded-2xl border border-white/5">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Limit</span>
+                        <select
+                            value={maxResults}
+                            onChange={(e) => { setMaxResults(e.target.value === "all" ? "all" : Number(e.target.value)); setCurrentPage(1); }}
+                            className="bg-transparent text-white font-bold outline-none cursor-pointer text-sm pr-2"
+                        >
+                            <option value={500} className="bg-slate-900">500</option>
+                            <option value={1000} className="bg-slate-900">1000</option>
+                            <option value={2000} className="bg-slate-900">2000</option>
+                            <option value="all" className="bg-slate-900">All</option>
+                        </select>
+                    </div>
                     
                     <div className="px-5 py-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
@@ -230,7 +244,7 @@ const CutoffList = ({ cutoffs, appliedFilters, isLoading }) => {
                             <tr className="bg-white/5 border-b border-white/5">
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">#</th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-indigo-400 transition-colors" onClick={() => handleSort('round')}>
-                                    Round {getSortIcon('round')}
+                                    Phase {getSortIcon('round')}
                                 </th>
                                 <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-indigo-400 transition-colors" onClick={() => handleSort('institute')}>
                                     Institute {getSortIcon('institute')}
@@ -257,7 +271,7 @@ const CutoffList = ({ cutoffs, appliedFilters, isLoading }) => {
                                     <td className="px-6 py-5 text-slate-600 font-bold text-xs">{(currentPage - 1) * resultsPerPage + index + 1}</td>
                                     <td className="px-6 py-5">
                                         <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black text-indigo-400 uppercase tracking-wider">
-                                            Round {item.round}
+                                            {String(item.round).toLowerCase().includes('round') ? item.round : `PHASE ${item.round}`}
                                         </span>
                                     </td>
                                     <td className="px-6 py-5">
@@ -333,7 +347,9 @@ const CutoffList = ({ cutoffs, appliedFilters, isLoading }) => {
                         
                         <div className="flex items-start justify-between">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">R{item.round} • {item.stream}</span>
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">
+                                    {String(item.round).toLowerCase().includes('round') ? item.round : `R${item.round}`} • {item.stream}
+                                </span>
                                 <h4 className="text-white font-bold text-base leading-tight pr-8">
                                     {highlightText(item.institute, searchTerm)}
                                 </h4>
